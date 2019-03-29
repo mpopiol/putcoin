@@ -5,4 +5,8 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\PutCoin.Model\PutCoin.Model.csproj" />
+  </ItemGroup>
+
 </Project>

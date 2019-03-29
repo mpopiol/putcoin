@@ -1,12 +1,32 @@
-﻿using System;
+﻿using PutCoin.Model;
+using System;
+using System.Threading.Tasks;
 
 namespace PutCoin
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
+
+            Task.Run(() =>
+            {
+                var miner = new Miner();
+
+                var transaction = new Transaction()
+                {
+                    Id = Guid.NewGuid(),
+                    Signature = "XD",
+                    OriginTransactionIds = new[] { Guid.NewGuid() }
+                };
+
+                var newBlock = miner.GetNewBlock(new[] { transaction });
+
+                Console.WriteLine($"Nonce: {newBlock.Nonce}");
+            });
+
+            Console.ReadKey();
         }
     }
 }
