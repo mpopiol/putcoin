@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace PutCoin.Model
 {
-    public class Transaction
+    public class Transaction : ICloneable
     {
         public Guid Id { get; set; }
         public IEnumerable<Guid> OriginTransactionIds { get; set; }
@@ -70,6 +70,15 @@ namespace PutCoin.Model
             }
 
             return designations;
+        }
+
+        public object Clone()
+        {
+            var cloned = (Transaction)MemberwiseClone();
+            cloned.Destinations = Destinations.Select(x => (TransactionDestination)x.Clone()).ToArray();
+            cloned.OriginTransactionIds = OriginTransactionIds.ToArray();
+            cloned.User = (User)User.Clone();
+            return cloned;
         }
     }
 }
