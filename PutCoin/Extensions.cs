@@ -7,9 +7,9 @@ namespace PutCoin
 {
     public static class Extensions
     {
-        public static string GetTransactionsHash(this string transactionString)
+        public static string GetHash(this string stringToHash)
         {
-            byte[] hashBytes = new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(transactionString));
+            byte[] hashBytes = new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(stringToHash));
 
             return BitConverter.ToString(hashBytes).Replace("-", "");
         }

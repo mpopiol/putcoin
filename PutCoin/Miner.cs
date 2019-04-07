@@ -33,7 +33,7 @@ namespace PutCoin
                     stringBuilder.Append(transaction);
                 }
 
-                var hash = stringBuilder.ToString().GetTransactionsHash();
+                var hash = stringBuilder.ToString().GetHash();
 
                 if (hash.Take(StartingZeroCount).All(hashCharacter => hashCharacter == '0'))
                 {
