@@ -4,10 +4,17 @@ using System.Linq;
 
 namespace PutCoin.Model
 {
-    public class BlockChain
+    public class BlockChain : ICloneable
     {
         public List<Block> Blocks { get; } = new List<Block>();
         public IEnumerable<Transaction> Transactions => Blocks.SelectMany(x => x.Transactions);
+
+        public object Clone()
+        {
+            var cloned = (BlockChain)MemberwiseClone();
+            cloned.Blocks = Blocks.Select(x => (Block)x.Clone()).ToList();
+            return cloned;
+        }
 
         public bool IsValid()
         {

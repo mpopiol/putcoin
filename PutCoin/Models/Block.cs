@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace PutCoin.Model
 {
-    public class Block
+    public class Block : ICloneable
     {
         public string PreviousBlockHash { get; set; }
         public IEnumerable<Transaction> Transactions { get; set; }
@@ -19,6 +17,13 @@ namespace PutCoin.Model
                 var stringToHash = $"{PreviousBlockHash}_{String.Join(";", Transactions.Select(x => x.Id.ToString()))}_{Nonce}";
                 return stringToHash.GetHash();
             }
+        }
+
+        public object Clone()
+        {
+            var cloned = (Block)MemberwiseClone();
+            cloned.Transactions = Transactions.Select(x => (Transaction)x.Clone()).ToArray();
+            return cloned;
         }
     }
 }
