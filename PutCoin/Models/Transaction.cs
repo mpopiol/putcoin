@@ -34,7 +34,7 @@ namespace PutCoin.Model
 
             var random = new Random();
             var receipents = potentialReceipents.Shuffle().Take(random.Next(1, 2)).ToArray();
-            List<TransactionDestination> designations = GetDesignationsForNewTransaction(valueToSpend, random, receipents);
+            List<TransactionDestination> designations = GetDesignationsForNewTransaction(valueToSpend, receipents);
 
             return new Transaction
             {
@@ -46,9 +46,10 @@ namespace PutCoin.Model
             };
         }
 
-        private static List<TransactionDestination> GetDesignationsForNewTransaction(decimal valueToSpend, Random random, User[] receipents)
+        private static List<TransactionDestination> GetDesignationsForNewTransaction(decimal valueToSpend, User[] receipents)
         {
             var designations = new List<TransactionDestination>();
+            var random = new Random();
 
             for (int i = 0; i < receipents.Count(); i++)
             {
