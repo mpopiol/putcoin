@@ -11,6 +11,7 @@ namespace PutCoin.Model
         public IEnumerable<TransactionDestination> Destinations { get; set; }
         public string Signature { get; set; }
         public User User { get; set; }
+        public bool IsGenesis { get; set; }
 
         public static Transaction GenerateRandomTransaction(BlockChain blockChain, User initiator)
         {
