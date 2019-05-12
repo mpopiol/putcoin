@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -7,11 +8,16 @@ namespace PutCoin
 {
     public static class Extensions
     {
-        public static string GetTransactionsHash(this string transactionString)
+        public static string GetHash(this string stringToHash)
         {
-            byte[] hashBytes = new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(transactionString));
+            byte[] hashBytes = new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(stringToHash));
 
             return BitConverter.ToString(hashBytes).Replace("-", "");
+        }
+
+        public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> enumerable)
+        {
+            return enumerable.OrderBy(x => Guid.NewGuid());
         }
     }
 }

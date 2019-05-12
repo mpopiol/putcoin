@@ -17,13 +17,7 @@ namespace PutCoin.Model
             get
             {
                 var stringToHash = $"{PreviousBlockHash}_{String.Join(";", Transactions.Select(x => x.Id.ToString()))}_{Nonce}";
-                var byteArray = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(stringToHash));
-                var builder = new StringBuilder();
-                var chars = byteArray.Select(x => x.ToString("X2")).ToArray();
-                for (int i = 0; i < chars.Length; i++)
-                    builder.Append(chars[i]);
-
-                return builder.ToString();
+                return stringToHash.GetHash();
             }
         }
     }
