@@ -6,7 +6,7 @@ namespace PutCoin.Model
 {
     public class BlockChain : ICloneable
     {
-        public List<Block> Blocks { get; } = new List<Block>();
+        public List<Block> Blocks { get; set; } = new List<Block>();
         public IEnumerable<Transaction> Transactions => Blocks.SelectMany(x => x.Transactions);
 
         public object Clone()
