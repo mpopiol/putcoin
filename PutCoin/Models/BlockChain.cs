@@ -21,7 +21,13 @@ namespace PutCoin.Model
             return !(AreThereMoreThanOneTransactionsWithTheSameOrigin()
                 || IsThereAnyTransactionWithInvalidOrigin()
                 || IsThereTransactionWithDifferentValueSpentThanAvailable()
+                || IsThereBlockWithInvalidHash()
             );
+        }
+
+        private bool IsThereBlockWithInvalidHash()
+        {
+            return Blocks.Any(x => x.Hash.Take(Miner.StartingZeroCount) != Enumerable.Repeat('0', Miner.StartingZeroCount));
         }
 
         private bool AreThereMoreThanOneTransactionsWithTheSameOrigin()
