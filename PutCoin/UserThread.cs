@@ -1,6 +1,7 @@
 ﻿using PutCoin.Model;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -8,24 +9,11 @@ namespace PutCoin
 {
     public class UserThread
     {
-        private BlockChain _blockChain { get; set; }
         private User _user { get; }
 
-        private object locker = new object();
-
-        public UserThread(BlockChain blockChain, User user)
+        public UserThread(User user)
         {
-            _blockChain = blockChain;
             _user = user;
-        }
-
-        public void UpdateBlockChain(BlockChain blockChain)
-        {
-            lock (locker)
-            {
-                if (blockChain.IsValid() && blockChain.Blocks.Count > _blockChain.Blocks.Count)
-                    _blockChain = blockChain;
-            }
         }
 
         public async Task Work()
@@ -45,9 +33,11 @@ namespace PutCoin
 
         private void CreateTransaction()
         {
-            lock (locker)
+            var transaction = Transaction.GenerateRandomTransaction(_user);
+
+            foreach (var recipientId in transaction.Destinations.Select(destination => destination.ReceipentId))
             {
-                var transaction = Transaction.GenerateRandomTransaction(_blockChain, _user);
+                Program.Users[recipientId].TryAddNewTransaction(transaction);
             }
         }
     }

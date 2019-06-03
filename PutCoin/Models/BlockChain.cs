@@ -27,16 +27,16 @@ namespace PutCoin.Model
 
         private bool IsThereBlockWithInvalidHash()
         {
-            return Blocks.Any(x => x.Hash.Take(Miner.StartingZeroCount) != Enumerable.Repeat('0', Miner.StartingZeroCount));
+            return Blocks.Any(x => x.Hash.Take(User.CalculatingDifficulty) != Enumerable.Repeat('0', User.CalculatingDifficulty));
         }
 
         private bool AreThereMoreThanOneTransactionsWithTheSameOrigin()
         {
             foreach (var transaction in Transactions)
             {
-                foreach (var user in transaction.Destinations.Select(x => x.Receipent))
+                foreach (var userId in transaction.Destinations.Select(x => x.ReceipentId))
                 {
-                    if (Transactions.Count(x => x.OriginTransactionIds.Contains(transaction.Id) && x.User == user) > 1)
+                    if (Transactions.Count(x => x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId) > 1)
                         return true;
                 }
             }
@@ -53,7 +53,7 @@ namespace PutCoin.Model
                 if (originTransaction.Count() != transaction.OriginTransactionIds.Count())
                     return true;
 
-                if (originTransaction.Any(x => !x.Destinations.Select(y => y.Receipent).Contains(transaction.User)))
+                if (originTransaction.Any(x => !x.Destinations.Select(y => y.ReceipentId).Contains(transaction.UserId)))
                     return true;
             }
 
@@ -65,14 +65,10 @@ namespace PutCoin.Model
             var transactionsToProcess = Transactions.Where(x => !x.IsGenesis);
             foreach (var transaction in transactionsToProcess)
             {
-                var moneySpent = transaction.Destinations.Sum(x => x.Value);
-                var moneyAvailable = Transactions.Where(x => transaction.OriginTransactionIds.Contains(x.Id))
-                    .SelectMany(x => x.Destinations)
-                    .Where(x => x.Receipent == transaction.User)
-                    .Sum(x => x.Value);
-
-                if (moneySpent != moneyAvailable)
+                if (!transaction.IsValidForTransactionHistory(Transactions))
+                {
                     return true;
+                }
             }
 
             return false;

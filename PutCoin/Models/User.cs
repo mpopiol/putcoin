@@ -1,11 +1,20 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace PutCoin.Model
 {
     public class User : ICloneable
     {
+        public static int CalculatingDifficulty = 5;
+
         public Guid Id { get; set; }
         public string Signature { get; set; }
+        public BlockChain BlockChain { get; set; }
+
+        private List<Transaction> pendingTransactions = new List<Transaction>();
+        private IEnumerable<Transaction> Transactions => BlockChain.Transactions.Concat(pendingTransactions);
 
         public object Clone()
         {
@@ -14,5 +23,59 @@ namespace PutCoin.Model
         }
 
         public override bool Equals(object obj) => obj is User user && user.Id == Id;
+
+        public void UpdateBlockChain(BlockChain blockChain)
+        {
+            if (blockChain.IsValid() && blockChain.Blocks.Count > BlockChain.Blocks.Count)
+            {
+                BlockChain = blockChain;
+                pendingTransactions = new List<Transaction>();
+            }
+        }
+
+        public Block GetNewBlock(Block previousBlock, ICollection<Transaction> transactions)
+        {
+            var seed = new Random();
+            var nonce = seed.Next();
+
+            while (true)
+            {
+                Console.WriteLine($"Checking nonce: {++nonce}");
+
+                var stringBuilder = new StringBuilder();
+                stringBuilder.Append(nonce);
+
+                foreach (var transaction in transactions)
+                {
+                    stringBuilder.Append(transaction);
+                }
+
+                var hash = stringBuilder.ToString().GetHash();
+
+                if (hash.Take(CalculatingDifficulty).All(hashCharacter => hashCharacter == '0'))
+                {
+                    break;
+                }
+            }
+
+            return new Block()
+            {
+                Nonce = nonce.ToString(),
+                Transactions = transactions,
+                PreviousBlockHash = previousBlock.Hash
+            };
+        }
+
+        public bool TryAddNewTransaction(Transaction transaction)
+        {
+            var isValid = transaction.IsValidForTransactionHistory(Transactions);
+
+            if (isValid)
+            {
+                pendingTransactions.Add(transaction);
+            }
+
+            return isValid;
+        }
     }
 }

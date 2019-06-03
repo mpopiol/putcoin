@@ -1,32 +1,18 @@
 ﻿using PutCoin.Model;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PutCoin
 {
     internal class Program
     {
+        internal static ConcurrentDictionary<Guid, User> Users = new ConcurrentDictionary<Guid, User>();
+
         private static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
-
-            Task.Run(() =>
-            {
-                var miner = new Miner();
-
-                var transaction = new Transaction()
-                {
-                    Id = Guid.NewGuid(),
-                    Signature = "XD",
-                    OriginTransactionIds = new[] { Guid.NewGuid() }
-                };
-
-                var newBlock = miner.GetNewBlock(new[] { transaction });
-
-                Console.WriteLine($"Nonce: {newBlock.Nonce}");
-            });
-
             var u1 = new User
             {
                 Id = Guid.NewGuid(),
@@ -37,6 +23,9 @@ namespace PutCoin
                 Id = Guid.NewGuid(),
                 Signature = "2"
             };
+
+            Users.TryAdd(u1.Id, u1);
+            Users.TryAdd(u2.Id, u2);
 
             var blockChain = new BlockChain();
             blockChain.Blocks.Add(new Block
@@ -52,18 +41,28 @@ namespace PutCoin
                         {
                             new TransactionDestination
                             {
-                                Receipent = u1,
+                                ReceipentId = u1.Id,
                                 Value = 10
                             },
                             new TransactionDestination
                             {
-                                Receipent = u2,
+                                ReceipentId = u2.Id,
                                 Value = 20
                             }
                         }
                     }
                 }
-            })
+            });
+
+            var threadPool = new List<Task>();
+
+            foreach (var userKV in Users)
+            {
+                userKV.Value.BlockChain = (BlockChain)blockChain.Clone();
+                var userThread = new UserThread(userKV.Value);
+
+                threadPool.Add(Task.Run(() => userThread.Work()));
+            }
 
             Console.ReadKey();
         }
