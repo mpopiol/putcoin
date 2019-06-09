@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -66,7 +67,16 @@ namespace PutCoin
                 threadPool.Add(Task.Run(() => userThread.Work()));
             }
 
-            Console.ReadKey();
+            while (true)
+            {
+                Console.ReadKey();
+                FileLogger.ExportBlockChainsToFiles(Users.Select(x => new BlockChainUser
+                    {
+                        BlockChain = x.Value.BlockChain,
+                        UserId = x.Value.Id
+                    })
+                );
+            }
         }
     }
 }
