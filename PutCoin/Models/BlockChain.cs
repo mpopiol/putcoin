@@ -36,7 +36,7 @@ namespace PutCoin.Model
             {
                 foreach (var userId in transaction.Destinations.Select(x => x.ReceipentId))
                 {
-                    if (Transactions.Count(x => x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId) > 1)
+                    if (Transactions.Where(trans => trans.OriginTransactionIds != null).Count(x => x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId) > 1)
                         return true;
                 }
             }

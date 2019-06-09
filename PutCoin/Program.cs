@@ -13,6 +13,10 @@ namespace PutCoin
     internal class Program
     {
         internal static ConcurrentDictionary<int, User> Users = new ConcurrentDictionary<int, User>();
+        internal static Subject<BlockChain> BlockChainPublishLine = new Subject<BlockChain>();
+        internal static Subject<Transaction> TransactionCheckLine = new Subject<Transaction>();
+        internal static Subject<Transaction> VerifiedTransactionPublishLine = new Subject<Transaction>();
+        internal static ConcurrentDictionary<Guid, Subject<bool>> TransactionValidationLine = new ConcurrentDictionary<Guid, Subject<bool>>();
 
         private static void Main(string[] args)
         {
@@ -26,9 +30,21 @@ namespace PutCoin
                 Id = 2,
                 Signature = "2"
             };
+            var u3 = new User
+            {
+                Id = 3,
+                Signature = "3"
+            };
+            var u4 = new User
+            {
+                Id = 4,
+                Signature = "4"
+            };
 
             Users.TryAdd(u1.Id, u1);
             Users.TryAdd(u2.Id, u2);
+            Users.TryAdd(u3.Id, u3);
+            Users.TryAdd(u4.Id, u4);
 
             var blockChain = new BlockChain();
             blockChain.Blocks.Add(new Block
@@ -51,7 +67,17 @@ namespace PutCoin
                             {
                                 ReceipentId = u2.Id,
                                 Value = 20
-                            }
+                            },
+                            new TransactionDestination
+                            {
+                                ReceipentId = u3.Id,
+                                Value = 30
+                            },
+                            new TransactionDestination
+                            {
+                                ReceipentId = u4.Id,
+                                Value = 40
+                            },
                         }
                     }
                 }

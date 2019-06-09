@@ -35,10 +35,12 @@ namespace PutCoin
         {
             var transaction = Transaction.GenerateRandomTransaction(_user);
 
-            foreach (var recipientId in transaction.Destinations.Select(destination => destination.ReceipentId))
+            if (transaction == null)
             {
-                Program.Users[recipientId].TryAddNewTransaction(_user, transaction);
+                return;
             }
+
+            Program.TransactionCheckLine.OnNext(transaction);
         }
     }
 }
