@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
+using NLog;
 using PutCoin.Model;
 
 namespace PutCoin
@@ -10,6 +11,8 @@ namespace PutCoin
     {
         public static void ExportBlockChainsToFiles(IEnumerable<BlockChainUser> blockChains)
         {
+            Program.Logger.Log(LogLevel.Info, "Exporting blockchains to files");
+            
             if (!Directory.Exists("Logs"))
                 Directory.CreateDirectory("Logs");
 
