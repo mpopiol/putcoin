@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using NLog;
 using PutCoin.Model;
@@ -40,8 +41,10 @@ namespace PutCoin
         {
             var transaction = Transaction.GenerateRandomTransaction(_user);
 
-            if (transaction == null) return;
+            if (transaction == null)
+                return;
 
+            Program.TransactionValidationLine.GetOrAdd(transaction.Id, new Subject<bool>());
             Program.TransactionCheckLine.OnNext(transaction);
         }
     }

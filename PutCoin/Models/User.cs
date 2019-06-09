@@ -54,15 +54,18 @@ namespace PutCoin.Model
 
         private void OnNewTransaction(Transaction transaction)
         {
-            Program.Logger.Log(LogLevel.Info, $"User {Id} OnNewTransaction");
-            
+            Program.Logger.Log(LogLevel.Info, $"User {Id} OnNewTransaction - Destinations: {String.Join('-', transaction.Destinations.Select(x => x.ReceipentId))}");
+
             if (transaction.Destinations.Any(destination => destination.ReceipentId == Id))
             {
+                Program.Logger.Log(LogLevel.Info, $"User {Id} trying to create queue for transaction {transaction.Id}");
+
                 var validationLine = Program.TransactionValidationLine.GetOrAdd(transaction.Id, new Subject<bool>());
+
                 transactionValidationResultCount[transaction.Id] = 0;
                 validationLine
                     .Take(Program.Users.Count)
-                    .TakeWhile(_ => transactionValidationResultCount[transaction.Id] < Program.Users.Count / 2)
+                    .TakeWhile(_ => transactionValidationResultCount[transaction.Id] < (Program.Users.Count - transaction.Destinations.Count()) / 2)
                     .Subscribe(
                         validationResult =>
                         {
@@ -75,7 +78,7 @@ namespace PutCoin.Model
                             if (transactionValidationResultCount[transaction.Id] >= Program.Users.Count / 2)
                                 Program.VerifiedTransactionPublishLine.OnNext(transaction);
 
-                            Program.Logger.Log(LogLevel.Info, $"User {Id} OnCompleted: {transactionValidationResultCount[transaction.Id] >= Program.Users.Count / 2}");
+                            Program.Logger.Log(LogLevel.Info, $"User {Id} OnCompleted: {(transactionValidationResultCount[transaction.Id] - transaction.Destinations.Count()) >= Program.Users.Count / 2}");
                         });
             }
             else
@@ -89,11 +92,10 @@ namespace PutCoin.Model
         {
             var isValid = transaction.IsValidForTransactionHistory(Transactions);
 
-            Subject<bool> publishingLine;
-            while (!Program.TransactionValidationLine.TryGetValue(transaction.Id, out publishingLine))
+            Program.TransactionValidationLine.TryGetValue(transaction.Id, out var publishingLine);
+
+            if (publishingLine == null)
             {
-                Thread.Sleep(250);
-                Program.Logger.Log(LogLevel.Info, $"User {Id} TryGetValue...");
             }
 
             publishingLine.OnNext(isValid);

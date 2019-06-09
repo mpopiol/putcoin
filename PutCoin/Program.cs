@@ -23,6 +23,8 @@ namespace PutCoin
 
         private static void Main(string[] args)
         {
+            Logger = LogManager.GetCurrentClassLogger();
+
             var u1 = new User
             {
                 Id = 1,
@@ -43,8 +45,6 @@ namespace PutCoin
                 Id = 4,
                 Signature = "4"
             };
-
-            Logger = LogManager.GetCurrentClassLogger();
 
             Users.TryAdd(u1.Id, u1);
             Users.TryAdd(u2.Id, u2);

@@ -50,7 +50,7 @@ namespace PutCoin.Model
             var receipents = Program.Users.Values
                 .Where(x => x.Id != initiator.Id)
                 .Shuffle()
-                .Take(random.Next(1, 2))
+                .Take(random.Next(1, 3))
                 .Select(x => x.Id).ToArray();
 
             var designations = GetDesignationsForNewTransaction(valueToSpend, receipents);
