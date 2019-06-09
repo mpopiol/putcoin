@@ -25,8 +25,6 @@ namespace PutCoin.Model
                 .Where(x => !allTransactions.Any(y => y.OriginTransactionIds != null && y.OriginTransactionIds.Contains(x.Id) && y.UserId == initiator.Id))
                 .ToArray();
 
-            var potentialReceipents = allTransactions.SelectMany(x => x.Destinations.Select(y => y.ReceipentId)).Distinct().Where(x => x != initiator.Id);
-
             var originTransaction = mineNotUsedTransactions.Shuffle().FirstOrDefault();
             if (originTransaction is default(Transaction))
                 return null;
@@ -34,7 +32,13 @@ namespace PutCoin.Model
             var valueToSpend = originTransaction.Destinations.Single(x => x.ReceipentId == initiator.Id).Value;
 
             var random = new Random();
-            var receipents = potentialReceipents.Shuffle().Take(random.Next(1, 2)).ToArray();
+            
+            var receipents = Program.Users.Values.
+                Shuffle()
+                .Where(x => x.Id != initiator.Id)
+                .Take(random.Next(1, 2))
+                .Select(x => x.Id).ToArray();
+            
             List<TransactionDestination> designations = GetDesignationsForNewTransaction(valueToSpend, receipents);
 
             return new Transaction
