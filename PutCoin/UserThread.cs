@@ -26,7 +26,7 @@ namespace PutCoin
                     Program.Logger.Log(LogLevel.Info, $"User: {_user.Signature}\tWaiting");
 
                     await Task.Delay(random.Next(1000, 5000));
-
+                    
                     Program.Logger.Log(LogLevel.Info, $"User: {_user.Signature}\tCreating transaction");
                     CreateTransaction();
                 }
@@ -43,8 +43,8 @@ namespace PutCoin
 
             if (transaction == null)
                 return;
-
-            Program.TransactionValidationLine.GetOrAdd(transaction.Id, new Subject<bool>());
+            
+            Program.TransactionValidationLine.GetOrAdd(transaction.Id, new ReplaySubject<bool>());
             Program.TransactionCheckLine.OnNext(transaction);
         }
     }

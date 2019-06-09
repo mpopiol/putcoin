@@ -18,6 +18,12 @@ namespace PutCoin.Model
 
         public bool IsValid()
         {
+            //debug only
+            var areThereMoreThanOneTransactionsWithTheSameOrigin = AreThereMoreThanOneTransactionsWithTheSameOrigin(); 
+            var isThereAnyTransactionWithInvalidOrigin = IsThereAnyTransactionWithInvalidOrigin(); 
+            var isThereTransactionWithDifferentValueSpentThanAvailable = IsThereTransactionWithDifferentValueSpentThanAvailable(); 
+            var isThereBlockWithInvalidHash = IsThereBlockWithInvalidHash(); 
+            
             return !(AreThereMoreThanOneTransactionsWithTheSameOrigin()
                      || IsThereAnyTransactionWithInvalidOrigin()
                      || IsThereTransactionWithDifferentValueSpentThanAvailable()
@@ -28,7 +34,8 @@ namespace PutCoin.Model
         private bool IsThereBlockWithInvalidHash()
         {
             return Blocks.Any(x => x.PreviousBlockHash != null &&
-                x.Hash.Take(User.CalculatingDifficulty) != Enumerable.Repeat('0', User.CalculatingDifficulty));
+                                   x.Hash.Substring(0, User.CalculatingDifficulty) !=
+                                   new string(Enumerable.Repeat('0', User.CalculatingDifficulty).ToArray()));
         }
 
         private bool AreThereMoreThanOneTransactionsWithTheSameOrigin()

@@ -12,7 +12,7 @@ namespace PutCoin.Model
     public class User : ICloneable, IDisposable
     {
         public static int CalculatingDifficulty = 3;
-        public static int BlockSize = 3;
+        public const int BlockSize = 3;
         private readonly IDisposable blockChainChangesSubscription;
         private readonly IDisposable transactionCheckSubscription;
         private readonly Dictionary<Guid, int> transactionValidationResultCount = new Dictionary<Guid, int>();
@@ -26,9 +26,11 @@ namespace PutCoin.Model
             transactionCheckSubscription = Program.TransactionCheckLine.Subscribe(OnNewTransaction);
             validatedTranactionSubscription = Program.VerifiedTransactionPublishLine.Subscribe(transaction =>
             {
+                //TODO check if transaction is valid
                 pendingTransactions.Add(transaction);
 
-                if (pendingTransactions.Count == BlockSize) PublishNewBlock();
+                if (pendingTransactions.Count == BlockSize)
+                    PublishNewBlock();
             });
         }
 
@@ -48,7 +50,9 @@ namespace PutCoin.Model
             if (blockChain.IsValid() && blockChain.Blocks.Count > BlockChain.Blocks.Count)
             {
                 BlockChain = (BlockChain) blockChain.Clone();
-                pendingTransactions = new List<Transaction>();
+
+                //To be discussed
+                pendingTransactions = pendingTransactions.Where(x => !BlockChain.Transactions.Select(y => y.Id).Contains(x.Id)).ToList();
             }
         }
 
@@ -59,8 +63,8 @@ namespace PutCoin.Model
             if (transaction.Destinations.Any(destination => destination.ReceipentId == Id))
             {
                 Program.Logger.Log(LogLevel.Info, $"User {Id} trying to create queue for transaction {transaction.Id}");
-
-                var validationLine = Program.TransactionValidationLine.GetOrAdd(transaction.Id, new Subject<bool>());
+                
+                var validationLine = Program.TransactionValidationLine.GetOrAdd(transaction.Id, new ReplaySubject<bool>());
 
                 transactionValidationResultCount[transaction.Id] = 0;
                 validationLine
@@ -75,7 +79,7 @@ namespace PutCoin.Model
                         },
                         () =>
                         {
-                            if (transactionValidationResultCount[transaction.Id] > (Program.Users.Count - transaction.Destinations.Count()) / 2)
+                            if (transactionValidationResultCount[transaction.Id] >= (Program.Users.Count - transaction.Destinations.Count()) / 2)
                                 Program.VerifiedTransactionPublishLine.OnNext(transaction);
 
                             Program.Logger.Log(LogLevel.Info, $"User {Id} OnCompleted: {(transactionValidationResultCount[transaction.Id] - transaction.Destinations.Count()) >= Program.Users.Count / 2}");
@@ -111,11 +115,11 @@ namespace PutCoin.Model
             var seed = new Random();
             var nonce = seed.Next();
 
-            var transactions = pendingTransactions;
+            var transactions = pendingTransactions.ToList();
 
             Program.Logger.Log(LogLevel.Info, $"User {Id} started validating Block");
-            
-            while (true)
+
+            while (!transactions.Any(x => !pendingTransactions.Select(y => y.Id).Contains(x.Id)))
             {
                 Console.WriteLine($"Checking nonce: {++nonce}");
 
@@ -133,11 +137,16 @@ namespace PutCoin.Model
                     return potentialBlock;
                 }
             }
+
+            return null;
         }
 
         private void PublishNewBlock()
         {
             var newBlock = GetNewBlock(BlockChain.Blocks.Last());
+            if (newBlock is null)
+                return;
+                
             BlockChain.Blocks.Add(newBlock);
             Program.BlockChainPublishLine.OnNext(BlockChain);
         }
