@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace PutCoin.Model
 {
     public class User : ICloneable
     {
         public static int CalculatingDifficulty = 5;
+        public static int BlockSize = 3;
 
         public Guid Id { get; set; }
         public string Signature { get; set; }
@@ -66,9 +68,40 @@ namespace PutCoin.Model
             };
         }
 
-        public bool TryAddNewTransaction(Transaction transaction)
+        public async Task<bool> CheckTransactionAsync(Transaction transaction)
         {
             var isValid = transaction.IsValidForTransactionHistory(Transactions);
+
+            if (!isValid)
+            {
+                return false;
+            }
+
+            pendingTransactions.Add(transaction);
+
+            if (pendingTransactions.Count == BlockSize)
+            {
+                await PublishNewBlockAsync();
+            }
+
+            return true;
+        }
+
+        private Task PublishNewBlockAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        public bool TryAddNewTransaction(User initiator, Transaction transaction)
+        {
+            var isValid = transaction.IsValidForTransactionHistory(Transactions);
+            var miners = Program.Users.Values.Except(new[] { initiator, this }).ToArray();
+            var transactionValidatedCount = 0;
+            var responses = miners.Select(async miner => transactionValidatedCount += (await miner.CheckTransactionAsync(transaction) ? 1 : 0)).ToArray();
+
+            Task.WaitAll(responses);
+
+            isValid &= (transactionValidatedCount > miners.Length / 2);
 
             if (isValid)
             {

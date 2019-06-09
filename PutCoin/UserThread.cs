@@ -37,7 +37,7 @@ namespace PutCoin
 
             foreach (var recipientId in transaction.Destinations.Select(destination => destination.ReceipentId))
             {
-                Program.Users[recipientId].TryAddNewTransaction(transaction);
+                Program.Users[recipientId].TryAddNewTransaction(_user, transaction);
             }
         }
     }
