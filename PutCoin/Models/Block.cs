@@ -14,15 +14,16 @@ namespace PutCoin.Model
         {
             get
             {
-                var stringToHash = $"{PreviousBlockHash}_{String.Join(";", Transactions.Select(x => x.Id.ToString()))}_{Nonce}";
+                var stringToHash =
+                    $"{PreviousBlockHash}_{string.Join(";", Transactions.Select(x => x.Id.ToString()))}_{Nonce}";
                 return stringToHash.GetHash();
             }
         }
 
         public object Clone()
         {
-            var cloned = (Block)MemberwiseClone();
-            cloned.Transactions = Transactions.Select(x => (Transaction)x.Clone()).ToArray();
+            var cloned = (Block) MemberwiseClone();
+            cloned.Transactions = Transactions.Select(x => (Transaction) x.Clone()).ToArray();
             return cloned;
         }
     }

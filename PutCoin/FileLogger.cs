@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
@@ -18,12 +17,10 @@ namespace PutCoin
             Directory.CreateDirectory(folderPath);
 
             foreach (var blockChain in blockChains)
-            {
                 using (var file = File.CreateText($"{folderPath}/{blockChain.UserId}.txt"))
                 {
                     file.Write(JsonConvert.SerializeObject(blockChain.BlockChain));
                 }
-            }
         }
     }
 

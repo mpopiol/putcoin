@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace PutCoin.Model
 {
@@ -14,15 +13,10 @@ namespace PutCoin.Model
         public static int BlockSize = 3;
         private readonly IDisposable blockChainChangesSubscription;
         private readonly IDisposable transactionCheckSubscription;
-        private readonly IDisposable validatedTranactionSubscription;
         private readonly Dictionary<Guid, int> transactionValidationResultCount = new Dictionary<Guid, int>();
-
-        public int Id { get; set; }
-        public string Signature { get; set; }
-        public BlockChain BlockChain { get; set; } = new BlockChain();
+        private readonly IDisposable validatedTranactionSubscription;
 
         private List<Transaction> pendingTransactions = new List<Transaction>();
-        public IEnumerable<Transaction> Transactions => BlockChain.Transactions.Concat(pendingTransactions);
 
         public User()
         {
@@ -32,18 +26,26 @@ namespace PutCoin.Model
             {
                 pendingTransactions.Add(transaction);
 
-                if (pendingTransactions.Count == BlockSize)
-                {
-                    PublishNewBlock();
-                }
+                if (pendingTransactions.Count == BlockSize) PublishNewBlock();
             });
+        }
+
+        public int Id { get; set; }
+        public string Signature { get; set; }
+        public BlockChain BlockChain { get; set; } = new BlockChain();
+        public IEnumerable<Transaction> Transactions => BlockChain.Transactions.Concat(pendingTransactions);
+
+        public object Clone()
+        {
+            var cloned = (User) MemberwiseClone();
+            return cloned;
         }
 
         private void OnUpdateBlockChain(BlockChain blockChain)
         {
             if (blockChain.IsValid() && blockChain.Blocks.Count > BlockChain.Blocks.Count)
             {
-                BlockChain = (BlockChain)blockChain.Clone();
+                BlockChain = (BlockChain) blockChain.Clone();
                 pendingTransactions = new List<Transaction>();
             }
         }
@@ -58,13 +60,12 @@ namespace PutCoin.Model
                     .Take(Program.Users.Count)
                     .TakeWhile(_ => transactionValidationResultCount[transaction.Id] < Program.Users.Count / 2)
                     .Subscribe(
-                        onNext: validationResult => transactionValidationResultCount[transaction.Id] += validationResult ? 1 : 0,
-                        onCompleted: () =>
+                        validationResult =>
+                            transactionValidationResultCount[transaction.Id] += validationResult ? 1 : 0,
+                        () =>
                         {
                             if (transactionValidationResultCount[transaction.Id] >= Program.Users.Count / 2)
-                            {
                                 Program.VerifiedTransactionPublishLine.OnNext(transaction);
-                            }
                         });
             }
             else
@@ -78,18 +79,17 @@ namespace PutCoin.Model
             var isValid = transaction.IsValidForTransactionHistory(Transactions);
 
             Subject<bool> publishingLine;
-            while(!Program.TransactionValidationLine.TryGetValue(transaction.Id, out publishingLine)) {}
+            while (!Program.TransactionValidationLine.TryGetValue(transaction.Id, out publishingLine))
+            {
+            }
 
             publishingLine.OnNext(isValid);
         }
 
-        public object Clone()
+        public override bool Equals(object obj)
         {
-            var cloned = (User)MemberwiseClone();
-            return cloned;
+            return obj is User user && user.Id == Id;
         }
-
-        public override bool Equals(object obj) => obj is User user && user.Id == Id;
 
         public Block GetNewBlock(Block previousBlock)
         {
@@ -105,20 +105,14 @@ namespace PutCoin.Model
                 var stringBuilder = new StringBuilder();
                 stringBuilder.Append(nonce);
 
-                foreach (var transaction in transactions)
-                {
-                    stringBuilder.Append(transaction);
-                }
+                foreach (var transaction in transactions) stringBuilder.Append(transaction);
 
                 var hash = stringBuilder.ToString().GetHash();
 
-                if (hash.Take(CalculatingDifficulty).All(hashCharacter => hashCharacter == '0'))
-                {
-                    break;
-                }
+                if (hash.Take(CalculatingDifficulty).All(hashCharacter => hashCharacter == '0')) break;
             }
 
-            return new Block()
+            return new Block
             {
                 Nonce = nonce.ToString(),
                 Transactions = transactions,
@@ -134,7 +128,8 @@ namespace PutCoin.Model
         }
 
         #region IDisposable Support
-        private bool disposedValue = false;
+
+        private bool disposedValue;
 
         protected virtual void Dispose(bool disposing)
         {
@@ -155,6 +150,7 @@ namespace PutCoin.Model
         {
             Dispose(true);
         }
+
         #endregion
     }
 }

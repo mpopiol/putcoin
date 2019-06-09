@@ -13,6 +13,15 @@ namespace PutCoin.Model
         public int UserId { get; set; }
         public bool IsGenesis { get; set; }
 
+        public object Clone()
+        {
+            var cloned = (Transaction) MemberwiseClone();
+            cloned.Destinations = Destinations.Select(x => (TransactionDestination) x.Clone()).ToArray();
+            cloned.OriginTransactionIds = OriginTransactionIds?.ToArray();
+            cloned.UserId = UserId;
+            return cloned;
+        }
+
         public static Transaction GenerateRandomTransaction(User initiator)
         {
             var allTransactions = initiator.Transactions;
@@ -21,7 +30,9 @@ namespace PutCoin.Model
                 .ToArray();
 
             var mineNotUsedTransactions = mineTransactions
-                .Where(x => !allTransactions.Any(y => y.OriginTransactionIds != null && y.OriginTransactionIds.Contains(x.Id) && y.UserId == initiator.Id))
+                .Where(x => !allTransactions.Any(y =>
+                    y.OriginTransactionIds != null && y.OriginTransactionIds.Contains(x.Id) &&
+                    y.UserId == initiator.Id))
                 .ToArray();
 
             var originTransaction = mineNotUsedTransactions.Shuffle().FirstOrDefault();
@@ -31,35 +42,36 @@ namespace PutCoin.Model
             var valueToSpend = originTransaction.Destinations.Single(x => x.ReceipentId == initiator.Id).Value;
 
             var random = new Random();
-            
+
             var receipents = Program.Users.Values
                 .Where(x => x.Id != initiator.Id)
                 .Shuffle()
                 .Take(random.Next(1, 2))
                 .Select(x => x.Id).ToArray();
-            
-            List<TransactionDestination> designations = GetDesignationsForNewTransaction(valueToSpend, receipents);
+
+            var designations = GetDesignationsForNewTransaction(valueToSpend, receipents);
 
             return new Transaction
             {
                 Destinations = designations,
                 Id = Guid.NewGuid(),
-                OriginTransactionIds = new[] { originTransaction.Id },
+                OriginTransactionIds = new[] {originTransaction.Id},
                 Signature = initiator.Signature,
                 UserId = initiator.Id
             };
         }
 
-        private static List<TransactionDestination> GetDesignationsForNewTransaction(decimal valueToSpend, int[] receipentIds)
+        private static List<TransactionDestination> GetDesignationsForNewTransaction(decimal valueToSpend,
+            int[] receipentIds)
         {
             var designations = new List<TransactionDestination>();
             var random = new Random();
 
-            for (int i = 0; i < receipentIds.Count(); i++)
+            for (var i = 0; i < receipentIds.Count(); i++)
             {
                 var designation = new TransactionDestination
                 {
-                    ReceipentId = receipentIds[i],
+                    ReceipentId = receipentIds[i]
                 };
 
                 if (i == receipentIds.Count() - 1)
@@ -71,6 +83,7 @@ namespace PutCoin.Model
                     designation.Value = valueToSpend / random.Next(1, 10);
                     valueToSpend -= designation.Value;
                 }
+
                 designations.Add(designation);
             }
 
@@ -86,15 +99,6 @@ namespace PutCoin.Model
                 .Sum(x => x.Value);
 
             return moneySpent <= moneyAvailable;
-        }
-
-        public object Clone()
-        {
-            var cloned = (Transaction)MemberwiseClone();
-            cloned.Destinations = Destinations.Select(x => (TransactionDestination)x.Clone()).ToArray();
-            cloned.OriginTransactionIds = OriginTransactionIds?.ToArray();
-            cloned.UserId = UserId;
-            return cloned;
         }
     }
 }

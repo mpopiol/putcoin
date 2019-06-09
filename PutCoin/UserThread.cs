@@ -1,20 +1,17 @@
-﻿using PutCoin.Model;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System;
 using System.Threading.Tasks;
+using PutCoin.Model;
 
 namespace PutCoin
 {
     public class UserThread
     {
-        private User _user { get; }
-
         public UserThread(User user)
         {
             _user = user;
         }
+
+        private User _user { get; }
 
         public async Task Work()
         {
@@ -35,10 +32,7 @@ namespace PutCoin
         {
             var transaction = Transaction.GenerateRandomTransaction(_user);
 
-            if (transaction == null)
-            {
-                return;
-            }
+            if (transaction == null) return;
 
             Program.TransactionCheckLine.OnNext(transaction);
         }

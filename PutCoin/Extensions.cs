@@ -10,7 +10,7 @@ namespace PutCoin
     {
         public static string GetHash(this string stringToHash)
         {
-            byte[] hashBytes = new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(stringToHash));
+            var hashBytes = new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(stringToHash));
 
             return BitConverter.ToString(hashBytes).Replace("-", "");
         }

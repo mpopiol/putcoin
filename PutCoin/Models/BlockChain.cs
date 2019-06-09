@@ -11,35 +11,33 @@ namespace PutCoin.Model
 
         public object Clone()
         {
-            var cloned = (BlockChain)MemberwiseClone();
-            cloned.Blocks = Blocks.Select(x => (Block)x.Clone()).ToList();
+            var cloned = (BlockChain) MemberwiseClone();
+            cloned.Blocks = Blocks.Select(x => (Block) x.Clone()).ToList();
             return cloned;
         }
 
         public bool IsValid()
         {
             return !(AreThereMoreThanOneTransactionsWithTheSameOrigin()
-                || IsThereAnyTransactionWithInvalidOrigin()
-                || IsThereTransactionWithDifferentValueSpentThanAvailable()
-                || IsThereBlockWithInvalidHash()
-            );
+                     || IsThereAnyTransactionWithInvalidOrigin()
+                     || IsThereTransactionWithDifferentValueSpentThanAvailable()
+                     || IsThereBlockWithInvalidHash()
+                );
         }
 
         private bool IsThereBlockWithInvalidHash()
         {
-            return Blocks.Any(x => x.Hash.Take(User.CalculatingDifficulty) != Enumerable.Repeat('0', User.CalculatingDifficulty));
+            return Blocks.Any(x =>
+                x.Hash.Take(User.CalculatingDifficulty) != Enumerable.Repeat('0', User.CalculatingDifficulty));
         }
 
         private bool AreThereMoreThanOneTransactionsWithTheSameOrigin()
         {
             foreach (var transaction in Transactions)
-            {
-                foreach (var userId in transaction.Destinations.Select(x => x.ReceipentId))
-                {
-                    if (Transactions.Where(trans => trans.OriginTransactionIds != null).Count(x => x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId) > 1)
-                        return true;
-                }
-            }
+            foreach (var userId in transaction.Destinations.Select(x => x.ReceipentId))
+                if (Transactions.Where(trans => trans.OriginTransactionIds != null).Count(x =>
+                        x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId) > 1)
+                    return true;
 
             return false;
         }
@@ -64,12 +62,8 @@ namespace PutCoin.Model
         {
             var transactionsToProcess = Transactions.Where(x => !x.IsGenesis);
             foreach (var transaction in transactionsToProcess)
-            {
                 if (!transaction.IsValidForTransactionHistory(Transactions))
-                {
                     return true;
-                }
-            }
 
             return false;
         }

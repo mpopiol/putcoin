@@ -1,12 +1,10 @@
-﻿using PutCoin.Model;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Threading;
 using System.Threading.Tasks;
+using PutCoin.Model;
 
 namespace PutCoin
 {
@@ -16,7 +14,9 @@ namespace PutCoin
         internal static Subject<BlockChain> BlockChainPublishLine = new Subject<BlockChain>();
         internal static Subject<Transaction> TransactionCheckLine = new Subject<Transaction>();
         internal static Subject<Transaction> VerifiedTransactionPublishLine = new Subject<Transaction>();
-        internal static ConcurrentDictionary<Guid, Subject<bool>> TransactionValidationLine = new ConcurrentDictionary<Guid, Subject<bool>>();
+
+        internal static ConcurrentDictionary<Guid, Subject<bool>> TransactionValidationLine =
+            new ConcurrentDictionary<Guid, Subject<bool>>();
 
         private static void Main(string[] args)
         {
@@ -77,7 +77,7 @@ namespace PutCoin
                             {
                                 ReceipentId = u4.Id,
                                 Value = 40
-                            },
+                            }
                         }
                     }
                 }
@@ -87,7 +87,7 @@ namespace PutCoin
 
             foreach (var userKV in Users)
             {
-                userKV.Value.BlockChain = (BlockChain)blockChain.Clone();
+                userKV.Value.BlockChain = (BlockChain) blockChain.Clone();
                 var userThread = new UserThread(userKV.Value);
 
                 threadPool.Add(Task.Run(() => userThread.Work()));
