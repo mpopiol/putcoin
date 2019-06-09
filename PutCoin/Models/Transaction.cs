@@ -33,9 +33,9 @@ namespace PutCoin.Model
 
             var random = new Random();
             
-            var receipents = Program.Users.Values.
-                Shuffle()
+            var receipents = Program.Users.Values
                 .Where(x => x.Id != initiator.Id)
+                .Shuffle()
                 .Take(random.Next(1, 2))
                 .Select(x => x.Id).ToArray();
             
