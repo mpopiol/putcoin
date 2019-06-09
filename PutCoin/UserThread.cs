@@ -43,7 +43,10 @@ namespace PutCoin
 
             if (transaction == null)
                 return;
-            
+
+            //I think that here we should add Transaction to some internal collection in User object
+            //and don't generate another transactions which are based on the same OriginTransactions
+            //that the "Pending" ones. To be discussed how those should behave on BlockChain override...
             Program.TransactionValidationLine.GetOrAdd(transaction.Id, new ReplaySubject<bool>());
             Program.TransactionCheckLine.OnNext(transaction);
         }
