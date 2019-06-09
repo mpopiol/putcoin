@@ -20,7 +20,7 @@ namespace PutCoin
             Directory.CreateDirectory(folderPath);
 
             foreach (var blockChain in blockChains)
-                using (var file = File.CreateText($"{folderPath}/{blockChain.UserId}.txt"))
+                using (var file = File.CreateText($"{folderPath}/{blockChain.UserId}.json"))
                 {
                     file.Write(JsonConvert.SerializeObject(blockChain.BlockChain));
                 }
