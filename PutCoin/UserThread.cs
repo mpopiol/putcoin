@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Threading;
 using System.Threading.Tasks;
 using NLog;
 using PutCoin.Model;
@@ -23,11 +25,11 @@ namespace PutCoin
 
                 while (true)
                 {
-                    Program.Logger.Log(LogLevel.Info, $"User: {_user.Signature}\tWaiting");
+                    //Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User: {_user.Signature}\tWaiting");
 
                     await Task.Delay(random.Next(1000, 5000));
 
-                    Program.Logger.Log(LogLevel.Info, $"User: {_user.Signature}\tCreating transaction");
+                    Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User: {_user.Signature}\tCreating transaction");
                     CreateTransaction();
                 }
             }
@@ -44,7 +46,7 @@ namespace PutCoin
             if (transaction == null)
                 return;
 
-            Program.TransactionValidationLine.GetOrAdd(transaction.Id, new Subject<bool>());
+            Program.TransactionValidationLine.GetOrAdd(transaction.Id, new ReplaySubject<bool>(Program.Users.Count));
             Program.TransactionCheckLine.OnNext(transaction);
         }
     }

@@ -16,8 +16,8 @@ namespace PutCoin
         internal static Subject<Transaction> TransactionCheckLine = new Subject<Transaction>();
         internal static Subject<Transaction> VerifiedTransactionPublishLine = new Subject<Transaction>();
 
-        internal static ConcurrentDictionary<Guid, Subject<bool>> TransactionValidationLine =
-            new ConcurrentDictionary<Guid, Subject<bool>>();
+        internal static ConcurrentDictionary<Guid, ReplaySubject<bool>> TransactionValidationLine =
+            new ConcurrentDictionary<Guid, ReplaySubject<bool>>();
 
         internal static ILogger Logger;
 

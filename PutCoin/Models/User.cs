@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text;
@@ -11,25 +12,37 @@ namespace PutCoin.Model
 {
     public class User : ICloneable, IDisposable
     {
-        public static int CalculatingDifficulty = 3;
-        public static int BlockSize = 3;
+        public static int CalculatingDifficulty = 4;
+        public static int BlockSize = 10;
         private readonly IDisposable blockChainChangesSubscription;
         private readonly IDisposable transactionCheckSubscription;
-        private readonly Dictionary<Guid, int> transactionValidationResultCount = new Dictionary<Guid, int>();
-        private readonly IDisposable validatedTranactionSubscription;
+        private readonly Dictionary<string, int> transactionValidationResultCount = new Dictionary<string, int>();
+        private readonly IDisposable validatedTransactionSubscription;
 
         private List<Transaction> pendingTransactions = new List<Transaction>();
 
         public User()
         {
-            blockChainChangesSubscription = Program.BlockChainPublishLine.Subscribe(OnUpdateBlockChain);
-            transactionCheckSubscription = Program.TransactionCheckLine.Subscribe(OnNewTransaction);
-            validatedTranactionSubscription = Program.VerifiedTransactionPublishLine.Subscribe(transaction =>
-            {
-                pendingTransactions.Add(transaction);
+            blockChainChangesSubscription = Program.BlockChainPublishLine
+                .ObserveOn(NewThreadScheduler.Default)
+                .Subscribe(OnUpdateBlockChain);
+            transactionCheckSubscription = Program.TransactionCheckLine
+                .ObserveOn(NewThreadScheduler.Default)
+                .Subscribe(OnNewTransaction);
+            validatedTransactionSubscription = Program.VerifiedTransactionPublishLine
+                .SubscribeOn(ThreadPoolScheduler.Instance)
+                .ObserveOn(TaskPoolScheduler.Default)
+                .Subscribe(transaction =>
+                {
+                    pendingTransactions.Add(transaction);
 
-                if (pendingTransactions.Count == BlockSize) PublishNewBlock();
-            });
+                    Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Pending trans: {pendingTransactions.Count}");
+
+                    if (pendingTransactions.Count >= BlockSize)
+                    {
+                        PublishNewBlock();
+                    }
+                });
         }
 
         public int Id { get; set; }
@@ -45,57 +58,63 @@ namespace PutCoin.Model
 
         private void OnUpdateBlockChain(BlockChain blockChain)
         {
-            if (blockChain.IsValid() && blockChain.Blocks.Count > BlockChain.Blocks.Count)
+            if (blockChain.IsValid && blockChain.Blocks.Count > BlockChain.Blocks.Count)
             {
                 BlockChain = (BlockChain) blockChain.Clone();
-                pendingTransactions = new List<Transaction>();
+                pendingTransactions = pendingTransactions.Except(BlockChain.Transactions).ToList();
             }
         }
 
         private void OnNewTransaction(Transaction transaction)
         {
-            Program.Logger.Log(LogLevel.Info, $"User {Id} OnNewTransaction - Destinations: {String.Join('-', transaction.Destinations.Select(x => x.ReceipentId))}");
+            Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} OnNewTransaction - Destinations: {String.Join(", ", transaction.Destinations.Select(x => x.ReceipentId))}");
+            var resultKey = transaction.Id.ToString();
 
-            if (transaction.Destinations.Any(destination => destination.ReceipentId == Id))
+            if (transaction.Destinations.Any(destination => destination.ReceipentId == Id) && !transactionValidationResultCount.ContainsKey(resultKey))
             {
-                Program.Logger.Log(LogLevel.Info, $"User {Id} trying to create queue for transaction {transaction.Id}");
+                transactionValidationResultCount[resultKey] = 0;
+                Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} trying to create queue for transaction {transaction.Id}");
 
-                var validationLine = Program.TransactionValidationLine.GetOrAdd(transaction.Id, new Subject<bool>());
-
-                transactionValidationResultCount[transaction.Id] = 0;
+                var validationLine = Program.TransactionValidationLine.GetOrAdd(transaction.Id, new ReplaySubject<bool>(Program.Users.Count));
+                var minimumAcceptance = (Program.Users.Count - transaction.Destinations.Count()) / 2;
+                
                 validationLine
+                    .SubscribeOn(ThreadPoolScheduler.Instance)
+                    .TakeWhile(_ => transactionValidationResultCount[resultKey] <= minimumAcceptance)
                     .Take(Program.Users.Count)
-                    .TakeWhile(_ => transactionValidationResultCount[transaction.Id] <= (Program.Users.Count - transaction.Destinations.Count()) / 2)
                     .Subscribe(
                         validationResult =>
                         {
-                            Program.Logger.Log(LogLevel.Info, $"User {Id} ValidationResult: {validationResult}");
+                            Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} T: {transaction.Id} User {Id} ValidationResult: {validationResult}");
 
-                            transactionValidationResultCount[transaction.Id] += validationResult ? 1 : 0;
+                            transactionValidationResultCount[resultKey] += validationResult ? 1 : 0;
                         },
                         () =>
                         {
-                            if (transactionValidationResultCount[transaction.Id] > (Program.Users.Count - transaction.Destinations.Count()) / 2)
+                            var positiveResults = transactionValidationResultCount[resultKey];
+                            if (positiveResults > minimumAcceptance)
                                 Program.VerifiedTransactionPublishLine.OnNext(transaction);
 
-                            Program.Logger.Log(LogLevel.Info, $"User {Id} OnCompleted: {(transactionValidationResultCount[transaction.Id] - transaction.Destinations.Count()) >= Program.Users.Count / 2}");
+                            Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} T: {transaction.Id} User {Id} OnCompleted: {transactionValidationResultCount[resultKey] > minimumAcceptance}");
                         });
             }
             else
             {
                 CheckTransaction(transaction);
-                Program.Logger.Log(LogLevel.Info, $"User {Id} Checked transaction");
+                Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} T: {transaction.Id} User {Id} Checked transaction");
             }
         }
 
         private void CheckTransaction(Transaction transaction)
         {
+            Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Checking transaction");
             var isValid = transaction.IsValidForTransactionHistory(Transactions);
 
             Program.TransactionValidationLine.TryGetValue(transaction.Id, out var publishingLine);
 
             if (publishingLine == null)
             {
+                return;
             }
 
             publishingLine.OnNext(isValid);
@@ -111,14 +130,12 @@ namespace PutCoin.Model
             var seed = new Random();
             var nonce = seed.Next();
 
-            var transactions = pendingTransactions;
+            var transactions = pendingTransactions.ToArray();
 
-            Program.Logger.Log(LogLevel.Info, $"User {Id} started validating Block");
+            Program.Logger.Log(LogLevel.Info, $"\t\tThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} started validating Block");
             
             while (true)
             {
-                Console.WriteLine($"Checking nonce: {++nonce}");
-
                 var potentialBlock = new Block
                 {
                     Nonce = nonce.ToString(),
@@ -128,7 +145,7 @@ namespace PutCoin.Model
 
                 if (potentialBlock.Hash.Take(CalculatingDifficulty).All(hashCharacter => hashCharacter == '0'))
                 {
-                    Program.Logger.Log(LogLevel.Info, $"User {Id} finished validating Block");
+                    Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} finished validating Block");
 
                     return potentialBlock;
                 }
@@ -154,7 +171,7 @@ namespace PutCoin.Model
                 {
                     blockChainChangesSubscription.Dispose();
                     transactionCheckSubscription.Dispose();
-                    validatedTranactionSubscription.Dispose();
+                    validatedTransactionSubscription.Dispose();
                 }
 
                 disposedValue = true;

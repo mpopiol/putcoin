@@ -16,19 +16,16 @@ namespace PutCoin.Model
             return cloned;
         }
 
-        public bool IsValid()
-        {
-            return !(AreThereMoreThanOneTransactionsWithTheSameOrigin()
-                     || IsThereAnyTransactionWithInvalidOrigin()
-                     || IsThereTransactionWithDifferentValueSpentThanAvailable()
-                     || IsThereBlockWithInvalidHash()
-                );
-        }
+        public bool IsValid =>
+            !AreThereMoreThanOneTransactionsWithTheSameOrigin() &&
+            !IsThereAnyTransactionWithInvalidOrigin() &&
+            !IsThereTransactionWithDifferentValueSpentThanAvailable() &&
+            !IsThereBlockWithInvalidHash();
 
         private bool IsThereBlockWithInvalidHash()
         {
             return Blocks.Any(x => x.PreviousBlockHash != null &&
-                x.Hash.Take(User.CalculatingDifficulty) != Enumerable.Repeat('0', User.CalculatingDifficulty));
+                x.Hash.Take(User.CalculatingDifficulty).Any(character => character != '0'));
         }
 
         private bool AreThereMoreThanOneTransactionsWithTheSameOrigin()

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using NLog;
 
 namespace PutCoin.Model
@@ -25,7 +26,7 @@ namespace PutCoin.Model
 
         public static Transaction GenerateRandomTransaction(User initiator)
         {
-            var allTransactions = initiator.Transactions;
+            var allTransactions = initiator.Transactions.ToArray();
             var mineTransactions = allTransactions
                 .Where(x => x.Destinations.Select(y => y.ReceipentId).Contains(initiator.Id))
                 .ToArray();
@@ -39,7 +40,7 @@ namespace PutCoin.Model
             var originTransaction = mineNotUsedTransactions.Shuffle().FirstOrDefault();
             if (originTransaction is default(Transaction))
             {
-                Program.Logger.Log(LogLevel.Info, $"User: {initiator.Id} did not find origin transaction");
+                Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User: {initiator.Id} did not find origin transaction");
                 return null;
             }
 
