@@ -11,18 +11,18 @@ namespace PutCoin
 {
     internal class Program
     {
-        internal static ConcurrentDictionary<Guid, User> Users = new ConcurrentDictionary<Guid, User>();
+        internal static ConcurrentDictionary<int, User> Users = new ConcurrentDictionary<int, User>();
 
         private static void Main(string[] args)
         {
             var u1 = new User
             {
-                Id = Guid.NewGuid(),
+                Id = 1,
                 Signature = "1"
             };
             var u2 = new User
             {
-                Id = Guid.NewGuid(),
+                Id = 2,
                 Signature = "2"
             };
 

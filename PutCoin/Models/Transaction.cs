@@ -10,7 +10,7 @@ namespace PutCoin.Model
         public IEnumerable<Guid> OriginTransactionIds { get; set; }
         public IEnumerable<TransactionDestination> Destinations { get; set; }
         public string Signature { get; set; }
-        public Guid UserId { get; set; }
+        public int UserId { get; set; }
         public bool IsGenesis { get; set; }
 
         public static Transaction GenerateRandomTransaction(User initiator)
@@ -47,19 +47,19 @@ namespace PutCoin.Model
             };
         }
 
-        private static List<TransactionDestination> GetDesignationsForNewTransaction(decimal valueToSpend, Guid[] receipents)
+        private static List<TransactionDestination> GetDesignationsForNewTransaction(decimal valueToSpend, int[] receipentIds)
         {
             var designations = new List<TransactionDestination>();
             var random = new Random();
 
-            for (int i = 0; i < receipents.Count(); i++)
+            for (int i = 0; i < receipentIds.Count(); i++)
             {
                 var designation = new TransactionDestination
                 {
-                    ReceipentId = receipents[i],
+                    ReceipentId = receipentIds[i],
                 };
 
-                if (i == receipents.Count() - 1)
+                if (i == receipentIds.Count() - 1)
                 {
                     designation.Value = valueToSpend;
                 }
