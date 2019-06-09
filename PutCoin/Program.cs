@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -11,18 +12,18 @@ namespace PutCoin
 {
     internal class Program
     {
-        internal static ConcurrentDictionary<Guid, User> Users = new ConcurrentDictionary<Guid, User>();
+        internal static ConcurrentDictionary<int, User> Users = new ConcurrentDictionary<int, User>();
 
         private static void Main(string[] args)
         {
             var u1 = new User
             {
-                Id = Guid.NewGuid(),
+                Id = 1,
                 Signature = "1"
             };
             var u2 = new User
             {
-                Id = Guid.NewGuid(),
+                Id = 2,
                 Signature = "2"
             };
 
@@ -66,7 +67,16 @@ namespace PutCoin
                 threadPool.Add(Task.Run(() => userThread.Work()));
             }
 
-            Console.ReadKey();
+            while (true)
+            {
+                Console.ReadKey();
+                FileLogger.ExportBlockChainsToFiles(Users.Select(x => new BlockChainUser
+                    {
+                        BlockChain = x.Value.BlockChain,
+                        UserId = x.Value.Id
+                    })
+                );
+            }
         }
     }
 }

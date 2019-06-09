@@ -11,7 +11,7 @@ namespace PutCoin.Model
         public static int CalculatingDifficulty = 5;
         public static int BlockSize = 3;
 
-        public Guid Id { get; set; }
+        public int Id { get; set; }
         public string Signature { get; set; }
         public BlockChain BlockChain { get; set; } = new BlockChain();
 
