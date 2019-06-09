@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace PutCoin.Model
 {
@@ -14,9 +15,15 @@ namespace PutCoin.Model
         {
             get
             {
-                var stringToHash =
-                    $"{PreviousBlockHash}_{string.Join(";", Transactions.Select(x => x.Id.ToString()))}_{Nonce}";
-                return stringToHash.GetHash();
+                var stringBuilder = new StringBuilder();
+                stringBuilder.Append(Nonce);
+
+                foreach (var transaction in Transactions)
+                {
+                    stringBuilder.Append(transaction);
+                }
+
+                return stringBuilder.ToString().GetHash();
             }
         }
 

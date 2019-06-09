@@ -65,7 +65,7 @@ namespace PutCoin.Model
                 transactionValidationResultCount[transaction.Id] = 0;
                 validationLine
                     .Take(Program.Users.Count)
-                    .TakeWhile(_ => transactionValidationResultCount[transaction.Id] < (Program.Users.Count - transaction.Destinations.Count()) / 2)
+                    .TakeWhile(_ => transactionValidationResultCount[transaction.Id] <= (Program.Users.Count - transaction.Destinations.Count()) / 2)
                     .Subscribe(
                         validationResult =>
                         {
@@ -75,7 +75,7 @@ namespace PutCoin.Model
                         },
                         () =>
                         {
-                            if (transactionValidationResultCount[transaction.Id] >= Program.Users.Count / 2)
+                            if (transactionValidationResultCount[transaction.Id] > (Program.Users.Count - transaction.Destinations.Count()) / 2)
                                 Program.VerifiedTransactionPublishLine.OnNext(transaction);
 
                             Program.Logger.Log(LogLevel.Info, $"User {Id} OnCompleted: {(transactionValidationResultCount[transaction.Id] - transaction.Destinations.Count()) >= Program.Users.Count / 2}");
@@ -119,24 +119,20 @@ namespace PutCoin.Model
             {
                 Console.WriteLine($"Checking nonce: {++nonce}");
 
-                var stringBuilder = new StringBuilder();
-                stringBuilder.Append(nonce);
+                var potentialBlock = new Block
+                {
+                    Nonce = nonce.ToString(),
+                    Transactions = transactions,
+                    PreviousBlockHash = previousBlock.Hash
+                };
 
-                foreach (var transaction in transactions) stringBuilder.Append(transaction);
+                if (potentialBlock.Hash.Take(CalculatingDifficulty).All(hashCharacter => hashCharacter == '0'))
+                {
+                    Program.Logger.Log(LogLevel.Info, $"User {Id} finished validating Block");
 
-                var hash = stringBuilder.ToString().GetHash();
-
-                if (hash.Take(CalculatingDifficulty).All(hashCharacter => hashCharacter == '0')) break;
+                    return potentialBlock;
+                }
             }
-            
-            Program.Logger.Log(LogLevel.Info, $"User {Id} finished validating Block");
-
-            return new Block
-            {
-                Nonce = nonce.ToString(),
-                Transactions = transactions,
-                PreviousBlockHash = previousBlock.Hash
-            };
         }
 
         private void PublishNewBlock()

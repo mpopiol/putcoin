@@ -27,7 +27,7 @@ namespace PutCoin.Model
 
         private bool IsThereBlockWithInvalidHash()
         {
-            return Blocks.Any(x =>
+            return Blocks.Any(x => x.PreviousBlockHash != null &&
                 x.Hash.Take(User.CalculatingDifficulty) != Enumerable.Repeat('0', User.CalculatingDifficulty));
         }
 
