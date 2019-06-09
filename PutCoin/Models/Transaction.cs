@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using NLog;
 
 namespace PutCoin.Model
 {
@@ -37,7 +38,10 @@ namespace PutCoin.Model
 
             var originTransaction = mineNotUsedTransactions.Shuffle().FirstOrDefault();
             if (originTransaction is default(Transaction))
+            {
+                Program.Logger.Log(LogLevel.Info, $"User: {initiator.Id} did not find origin transaction");
                 return null;
+            }
 
             var valueToSpend = originTransaction.Destinations.Single(x => x.ReceipentId == initiator.Id).Value;
 

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text;
+using System.Threading;
+using NLog;
 
 namespace PutCoin.Model
 {
@@ -52,6 +54,8 @@ namespace PutCoin.Model
 
         private void OnNewTransaction(Transaction transaction)
         {
+            Program.Logger.Log(LogLevel.Info, $"User {Id} OnNewTransaction");
+            
             if (transaction.Destinations.Any(destination => destination.ReceipentId == Id))
             {
                 var validationLine = Program.TransactionValidationLine.GetOrAdd(transaction.Id, new Subject<bool>());
@@ -61,16 +65,23 @@ namespace PutCoin.Model
                     .TakeWhile(_ => transactionValidationResultCount[transaction.Id] < Program.Users.Count / 2)
                     .Subscribe(
                         validationResult =>
-                            transactionValidationResultCount[transaction.Id] += validationResult ? 1 : 0,
+                        {
+                            Program.Logger.Log(LogLevel.Info, $"User {Id} ValidationResult: {validationResult}");
+
+                            transactionValidationResultCount[transaction.Id] += validationResult ? 1 : 0;
+                        },
                         () =>
                         {
                             if (transactionValidationResultCount[transaction.Id] >= Program.Users.Count / 2)
                                 Program.VerifiedTransactionPublishLine.OnNext(transaction);
+
+                            Program.Logger.Log(LogLevel.Info, $"User {Id} OnCompleted: {transactionValidationResultCount[transaction.Id] >= Program.Users.Count / 2}");
                         });
             }
             else
             {
                 CheckTransaction(transaction);
+                Program.Logger.Log(LogLevel.Info, $"User {Id} Checked transaction");
             }
         }
 
@@ -81,6 +92,8 @@ namespace PutCoin.Model
             Subject<bool> publishingLine;
             while (!Program.TransactionValidationLine.TryGetValue(transaction.Id, out publishingLine))
             {
+                Thread.Sleep(250);
+                Program.Logger.Log(LogLevel.Info, $"User {Id} TryGetValue...");
             }
 
             publishingLine.OnNext(isValid);
@@ -98,6 +111,8 @@ namespace PutCoin.Model
 
             var transactions = pendingTransactions;
 
+            Program.Logger.Log(LogLevel.Info, $"User {Id} started validating Block");
+            
             while (true)
             {
                 Console.WriteLine($"Checking nonce: {++nonce}");
@@ -111,6 +126,8 @@ namespace PutCoin.Model
 
                 if (hash.Take(CalculatingDifficulty).All(hashCharacter => hashCharacter == '0')) break;
             }
+            
+            Program.Logger.Log(LogLevel.Info, $"User {Id} finished validating Block");
 
             return new Block
             {

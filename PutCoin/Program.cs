@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
+using NLog;
 using PutCoin.Model;
 
 namespace PutCoin
@@ -17,6 +18,8 @@ namespace PutCoin
 
         internal static ConcurrentDictionary<Guid, Subject<bool>> TransactionValidationLine =
             new ConcurrentDictionary<Guid, Subject<bool>>();
+
+        internal static ILogger Logger;
 
         private static void Main(string[] args)
         {
@@ -40,6 +43,8 @@ namespace PutCoin
                 Id = 4,
                 Signature = "4"
             };
+
+            Logger = LogManager.GetCurrentClassLogger();
 
             Users.TryAdd(u1.Id, u1);
             Users.TryAdd(u2.Id, u2);
@@ -95,13 +100,15 @@ namespace PutCoin
 
             while (true)
             {
-                Console.ReadKey();
-                FileLogger.ExportBlockChainsToFiles(Users.Select(x => new BlockChainUser
-                    {
-                        BlockChain = x.Value.BlockChain,
-                        UserId = x.Value.Id
-                    })
-                );
+                if (Console.ReadKey().Key == ConsoleKey.L)
+                {
+                    FileLogger.ExportBlockChainsToFiles(Users.Select(x => new BlockChainUser
+                        {
+                            BlockChain = x.Value.BlockChain,
+                            UserId = x.Value.Id
+                        })
+                    );
+                }
             }
         }
     }

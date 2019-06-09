@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using NLog;
 using PutCoin.Model;
 
 namespace PutCoin
@@ -15,16 +16,23 @@ namespace PutCoin
 
         public async Task Work()
         {
-            var random = new Random();
-
-            while (true)
+            try
             {
-                Console.WriteLine($"User: {_user.Signature}\tWaiting");
+                var random = new Random();
 
-                await Task.Delay(random.Next(1000, 5000));
+                while (true)
+                {
+                    Program.Logger.Log(LogLevel.Info, $"User: {_user.Signature}\tWaiting");
 
-                Console.WriteLine($"User: {_user.Signature}\tCreating transaction");
-                CreateTransaction();
+                    await Task.Delay(random.Next(1000, 5000));
+
+                    Program.Logger.Log(LogLevel.Info, $"User: {_user.Signature}\tCreating transaction");
+                    CreateTransaction();
+                }
+            }
+            catch (Exception e)
+            {
+                Program.Logger.Log(LogLevel.Error, e);
             }
         }
 
