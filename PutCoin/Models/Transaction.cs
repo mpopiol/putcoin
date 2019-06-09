@@ -15,12 +15,11 @@ namespace PutCoin.Model
 
         public static Transaction GenerateRandomTransaction(User initiator)
         {
-            var allTransactions = initiator.BlockChain.Blocks.SelectMany(x => x.Transactions).ToArray();
+            var allTransactions = initiator.Transactions;
             var mineTransactions = allTransactions
                 .Where(x => x.Destinations.Select(y => y.ReceipentId).Contains(initiator.Id))
                 .ToArray();
 
-            //I assume that when I use some transaction I have to use it all
             var mineNotUsedTransactions = mineTransactions
                 .Where(x => !allTransactions.Any(y => y.OriginTransactionIds != null && y.OriginTransactionIds.Contains(x.Id) && y.UserId == initiator.Id))
                 .ToArray();
@@ -82,7 +81,7 @@ namespace PutCoin.Model
                 .Where(x => x.ReceipentId == UserId)
                 .Sum(x => x.Value);
 
-            return moneySpent != moneyAvailable;
+            return moneySpent <= moneyAvailable;
         }
 
         public object Clone()
