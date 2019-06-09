@@ -13,7 +13,7 @@ namespace PutCoin.Model
 
         public Guid Id { get; set; }
         public string Signature { get; set; }
-        public BlockChain BlockChain { get; set; }
+        public BlockChain BlockChain { get; set; } = new BlockChain();
 
         private List<Transaction> pendingTransactions = new List<Transaction>();
         private IEnumerable<Transaction> Transactions => BlockChain.Transactions.Concat(pendingTransactions);

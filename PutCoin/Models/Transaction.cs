@@ -22,14 +22,14 @@ namespace PutCoin.Model
 
             //I assume that when I use some transaction I have to use it all
             var mineNotUsedTransactions = mineTransactions
-                .Where(x => !allTransactions.Any(y => y.OriginTransactionIds.Contains(x.Id) && y.UserId == initiator.Id))
+                .Where(x => !allTransactions.Any(y => y.OriginTransactionIds != null && y.OriginTransactionIds.Contains(x.Id) && y.UserId == initiator.Id))
                 .ToArray();
 
-            var potentialReceipents = allTransactions.SelectMany(x => x.Destinations.Select(y => y.ReceipentId)).Distinct();
+            var potentialReceipents = allTransactions.SelectMany(x => x.Destinations.Select(y => y.ReceipentId)).Distinct().Where(x => x != initiator.Id);
 
             var originTransaction = mineNotUsedTransactions.Shuffle().FirstOrDefault();
             if (originTransaction is default(Transaction))
-                return default;
+                return null;
 
             var valueToSpend = originTransaction.Destinations.Single(x => x.ReceipentId == initiator.Id).Value;
 
@@ -89,7 +89,7 @@ namespace PutCoin.Model
         {
             var cloned = (Transaction)MemberwiseClone();
             cloned.Destinations = Destinations.Select(x => (TransactionDestination)x.Clone()).ToArray();
-            cloned.OriginTransactionIds = OriginTransactionIds.ToArray();
+            cloned.OriginTransactionIds = OriginTransactionIds?.ToArray();
             cloned.UserId = UserId;
             return cloned;
         }
