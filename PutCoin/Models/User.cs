@@ -171,6 +171,7 @@ namespace PutCoin.Model
             if (newBlock is null)
                 return;
             
+            //here somehow it happens that newBlock contains transaction which is already in BlockChain
             BlockChain.Blocks.Add(newBlock);
             Program.BlockChainPublishLine.OnNext(BlockChain);
         }
