@@ -13,13 +13,15 @@ namespace PutCoin.Model
     public class User : ICloneable, IDisposable
     {
         public static int CalculatingDifficulty = 4;
-        public static int BlockSize = 10;
         private readonly IDisposable blockChainChangesSubscription;
         private readonly IDisposable transactionCheckSubscription;
         private readonly Dictionary<string, int> transactionValidationResultCount = new Dictionary<string, int>();
         private readonly IDisposable validatedTransactionSubscription;
 
+        private volatile BlockVerificationStatusType BlockVerificationStatus = BlockVerificationStatusType.NoVerification;
+
         private List<Transaction> pendingTransactions = new List<Transaction>();
+        private List<Transaction> generatedTransactions = new List<Transaction>();
 
         public User()
         {
@@ -34,11 +36,12 @@ namespace PutCoin.Model
                 .ObserveOn(TaskPoolScheduler.Default)
                 .Subscribe(transaction =>
                 {
+                    generatedTransactions.Remove(transaction);
                     pendingTransactions.Add(transaction);
 
                     Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Pending trans: {pendingTransactions.Count}");
 
-                    if (pendingTransactions.Count >= BlockSize)
+                    if (BlockVerificationStatus == BlockVerificationStatusType.NoVerification && pendingTransactions.Count >= Program.Users.Count)
                     {
                         PublishNewBlock();
                     }
@@ -62,6 +65,15 @@ namespace PutCoin.Model
             {
                 BlockChain = (BlockChain) blockChain.Clone();
                 pendingTransactions = pendingTransactions.Except(BlockChain.Transactions).ToList();
+
+                if (BlockVerificationStatus == BlockVerificationStatusType.Found)
+                {
+                    BlockVerificationStatus = BlockVerificationStatusType.NoVerification;
+                }
+                else
+                {
+                    BlockVerificationStatus = BlockVerificationStatusType.FoundByAnotherUser;
+                }
             }
         }
 
@@ -76,7 +88,7 @@ namespace PutCoin.Model
                 Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} trying to create queue for transaction {transaction.Id}");
 
                 var validationLine = Program.TransactionValidationLine.GetOrAdd(transaction.Id, new ReplaySubject<bool>(Program.Users.Count));
-                var minimumAcceptance = (Program.Users.Count - transaction.Destinations.Count()) / 2;
+                var minimumAcceptance = (Program.Users.Count - transaction.Destinations.Count()) / 2 + 1;
                 
                 validationLine
                     .SubscribeOn(ThreadPoolScheduler.Instance)
@@ -138,8 +150,9 @@ namespace PutCoin.Model
             var transactions = pendingTransactions.ToArray();
 
             Program.Logger.Log(LogLevel.Info, $"\t\tThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} started validating Block");
-            
-            while (true)
+
+            BlockVerificationStatus = BlockVerificationStatusType.Searching;
+            while (BlockVerificationStatus == BlockVerificationStatusType.Searching)
             {
                 var potentialBlock = new Block
                 {
@@ -151,17 +164,107 @@ namespace PutCoin.Model
                 if (potentialBlock.Hash.Take(CalculatingDifficulty).All(hashCharacter => hashCharacter == '0'))
                 {
                     Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} finished validating Block");
-
+                    BlockVerificationStatus = BlockVerificationStatusType.Found;
                     return potentialBlock;
                 }
             }
+
+            return null;
         }
 
         private void PublishNewBlock()
         {
             var newBlock = GetNewBlock(BlockChain.Blocks.Last());
+            if (newBlock is null)
+            {
+                BlockVerificationStatus = BlockVerificationStatusType.NoVerification;
+                return;
+            }
             BlockChain.Blocks.Add(newBlock);
             Program.BlockChainPublishLine.OnNext(BlockChain);
+        }
+
+
+        public Transaction GenerateRandomTransaction()
+        {
+            var mineValidTransactions = BlockChain.Transactions
+                .Where(x => x.Destinations.Select(y => y.ReceipentId).Contains(Id))
+                .ToArray();
+
+            var allMadeTransactions = Transactions.Concat(generatedTransactions).ToArray();
+            var mineNotUsedTransactions = mineValidTransactions
+                .Where(x => !allMadeTransactions.Any(y =>
+                    y.OriginTransactionIds != null && y.OriginTransactionIds.Contains(x.Id) &&
+                    y.UserId == Id))
+                .ToArray();
+
+            var originTransaction = mineNotUsedTransactions.Shuffle().FirstOrDefault();
+            if (originTransaction is default(Transaction))
+            {
+                Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User: {Id} did not find origin transaction");
+                return null;
+            }
+
+            var valueToSpend = originTransaction.Destinations.Single(x => x.ReceipentId == Id).Value;
+
+            var random = new Random();
+
+            var receipents = Program.Users
+                .Where(x => x.Id != Id)
+                .Shuffle()
+                .Take(random.Next(1, 3))
+                .Select(x => x.Id).ToArray();
+
+            var destinations = GetDestinationsForNewTransaction(valueToSpend, receipents);
+
+            var newTransaction =  new Transaction
+            {
+                Destinations = destinations,
+                Id = Guid.NewGuid(),
+                OriginTransactionIds = new[] { originTransaction.Id },
+                Signature = Signature,
+                UserId = Id
+            };
+            generatedTransactions.Add(newTransaction);
+
+            return newTransaction;
+        }
+
+
+        private static List<TransactionDestination> GetDestinationsForNewTransaction(decimal valueToSpend, int[] receipentIds)
+        {
+            var destinations = new List<TransactionDestination>();
+            var random = new Random();
+
+            for (var i = 0; i < receipentIds.Count(); i++)
+            {
+                var destination = new TransactionDestination
+                {
+                    ReceipentId = receipentIds[i]
+                };
+
+                if (i == receipentIds.Count() - 1)
+                {
+                    destination.Value = valueToSpend;
+                }
+                else
+                {
+                    destination.Value = valueToSpend / random.Next(1, 10);
+                    valueToSpend -= destination.Value;
+                }
+
+                destinations.Add(destination);
+            }
+
+            return destinations;
+        }
+
+        private enum BlockVerificationStatusType
+        {
+            NoVerification,
+            Searching,
+            Found,
+            FoundByAnotherUser
         }
 
         #region IDisposable Support
