@@ -105,5 +105,15 @@ namespace PutCoin.Model
 
             return moneySpent <= moneyAvailable;
         }
+
+        public override bool Equals(object obj)
+        {
+            return obj is Transaction tr && tr.Id == Id;
+        }
+
+        public override int GetHashCode()
+        {
+            return Id.GetHashCode();
+        }
     }
 }

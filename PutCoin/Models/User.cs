@@ -125,6 +125,11 @@ namespace PutCoin.Model
             return obj is User user && user.Id == Id;
         }
 
+        public override int GetHashCode()
+        {
+            return Id;
+        }
+
         public Block GetNewBlock(Block previousBlock)
         {
             var seed = new Random();
