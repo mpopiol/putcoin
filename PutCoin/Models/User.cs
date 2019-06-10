@@ -138,7 +138,7 @@ namespace PutCoin.Model
             {
                 var potentialBlock = new Block
                 {
-                    Nonce = nonce.ToString(),
+                    Nonce = (++nonce).ToString(),
                     Transactions = transactions,
                     PreviousBlockHash = previousBlock.Hash
                 };
