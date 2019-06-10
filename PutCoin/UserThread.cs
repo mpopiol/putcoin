@@ -45,6 +45,8 @@ namespace PutCoin
 
             if (transaction == null)
                 return;
+            
+            _user.minePendingTransactions.Add(transaction);
 
             Program.TransactionValidationLine.GetOrAdd(transaction.Id, new ReplaySubject<bool>(Program.Users.Count));
             Program.TransactionCheckLine.OnNext(transaction);

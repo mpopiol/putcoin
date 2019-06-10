@@ -31,8 +31,10 @@ namespace PutCoin.Model
                 .Where(x => x.Destinations.Select(y => y.ReceipentId).Contains(initiator.Id))
                 .ToArray();
 
+            var allAndPending = allTransactions.Concat(initiator.minePendingTransactions);
+            
             var mineNotUsedTransactions = mineTransactions
-                .Where(x => !allTransactions.Any(y =>
+                .Where(x => !allAndPending.Any(y =>
                     y.OriginTransactionIds != null && y.OriginTransactionIds.Contains(x.Id) &&
                     y.UserId == initiator.Id))
                 .ToArray();

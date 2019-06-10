@@ -10,7 +10,6 @@ namespace PutCoin.Model
         public object Clone()
         {
             var cloned = (TransactionDestination) MemberwiseClone();
-            cloned.ReceipentId = ReceipentId;
             return cloned;
         }
     }

@@ -7,7 +7,7 @@ namespace PutCoin.Model
     public class BlockChain : ICloneable
     {
         public List<Block> Blocks { get; set; } = new List<Block>();
-        public IEnumerable<Transaction> Transactions => Blocks.SelectMany(x => x.Transactions);
+        public IEnumerable<Transaction> Transactions => Blocks.SelectMany(x => x.Transactions).ToArray();
 
         public object Clone()
         {
@@ -34,7 +34,12 @@ namespace PutCoin.Model
             foreach (var userId in transaction.Destinations.Select(x => x.ReceipentId))
                 if (Transactions.Where(trans => trans.OriginTransactionIds != null).Count(x =>
                         x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId) > 1)
+                {
+                    var debugOnly = Transactions.Where(trans => trans.OriginTransactionIds != null).Where(x =>
+                        x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId).ToArray();
+                    
                     return true;
+                }
 
             return false;
         }

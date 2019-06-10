@@ -13,13 +13,15 @@ namespace PutCoin.Model
     public class User : ICloneable, IDisposable
     {
         public static int CalculatingDifficulty = 4;
-        public static int BlockSize = 10;
+        public static int BlockSize = 3;
         private readonly IDisposable blockChainChangesSubscription;
         private readonly IDisposable transactionCheckSubscription;
         private readonly Dictionary<string, int> transactionValidationResultCount = new Dictionary<string, int>();
         private readonly IDisposable validatedTransactionSubscription;
 
         private List<Transaction> pendingTransactions = new List<Transaction>();
+        
+        public List<Transaction> minePendingTransactions = new List<Transaction>();
 
         public User()
         {
@@ -72,6 +74,9 @@ namespace PutCoin.Model
 
             if (transaction.Destinations.Any(destination => destination.ReceipentId == Id) && !transactionValidationResultCount.ContainsKey(resultKey))
             {
+                if (transaction.Destinations.Select(x => x.ReceipentId).OrderBy(x => x).First() != Id)
+                    return;
+                
                 transactionValidationResultCount[resultKey] = 0;
                 Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} trying to create queue for transaction {transaction.Id}");
 
@@ -80,8 +85,8 @@ namespace PutCoin.Model
                 
                 validationLine
                     .SubscribeOn(ThreadPoolScheduler.Instance)
-                    .TakeWhile(_ => transactionValidationResultCount[resultKey] <= minimumAcceptance)
-                    .Take(Program.Users.Count)
+                    .TakeWhile(_ => transactionValidationResultCount[resultKey] < minimumAcceptance)
+                    //.Take(Program.Users.Count)
                     .Subscribe(
                         validationResult =>
                         {
@@ -92,7 +97,7 @@ namespace PutCoin.Model
                         () =>
                         {
                             var positiveResults = transactionValidationResultCount[resultKey];
-                            if (positiveResults > minimumAcceptance)
+                            if (positiveResults >= minimumAcceptance)
                                 Program.VerifiedTransactionPublishLine.OnNext(transaction);
 
                             Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} T: {transaction.Id} User {Id} OnCompleted: {transactionValidationResultCount[resultKey] > minimumAcceptance}");
@@ -139,7 +144,7 @@ namespace PutCoin.Model
 
             Program.Logger.Log(LogLevel.Info, $"\t\tThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} started validating Block");
             
-            while (true)
+            while (transactions.All(x => pendingTransactions.Contains(x)))
             {
                 var potentialBlock = new Block
                 {
@@ -155,11 +160,17 @@ namespace PutCoin.Model
                     return potentialBlock;
                 }
             }
+
+            return null;
         }
 
         private void PublishNewBlock()
         {
             var newBlock = GetNewBlock(BlockChain.Blocks.Last());
+
+            if (newBlock is null)
+                return;
+            
             BlockChain.Blocks.Add(newBlock);
             Program.BlockChainPublishLine.OnNext(BlockChain);
         }
