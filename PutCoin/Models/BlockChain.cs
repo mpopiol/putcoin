@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -7,6 +8,8 @@ namespace PutCoin.Model
     public class BlockChain : ICloneable
     {
         public List<Block> Blocks { get; set; } = new List<Block>();
+
+        [JsonIgnore]
         public IEnumerable<Transaction> Transactions => Blocks.SelectMany(x => x.Transactions);
 
         public object Clone()

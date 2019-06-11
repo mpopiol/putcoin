@@ -16,14 +16,11 @@ namespace PutCoin
             if (!Directory.Exists("Logs"))
                 Directory.CreateDirectory("Logs");
 
-            var folderPath = $"Logs/{DateTime.Now:yyyy-MM-dd-HH-mm-ss}";
-            Directory.CreateDirectory(folderPath);
-
-            foreach (var blockChain in blockChains)
-                using (var file = File.CreateText($"{folderPath}/{blockChain.UserId}.json"))
-                {
-                    file.Write(JsonConvert.SerializeObject(blockChain.BlockChain));
-                }
+            var dateString = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}";
+            using (var file = File.CreateText($"Logs/{dateString}.json"))
+            {
+                file.Write(JsonConvert.SerializeObject(blockChains));
+            }
         }
     }
 
