@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
@@ -12,7 +13,7 @@ namespace PutCoin.Model
 {
     public class User : ICloneable, IDisposable
     {
-        public static int CalculatingDifficulty = 4;
+        public static int CalculatingDifficulty = 5;
         private readonly IDisposable blockChainChangesSubscription;
         private readonly IDisposable transactionCheckSubscription;
         private readonly Dictionary<string, int> transactionValidationResultCount = new Dictionary<string, int>();
@@ -37,7 +38,8 @@ namespace PutCoin.Model
                 .Subscribe(transaction =>
                 {
                     generatedTransactions.Remove(transaction);
-                    pendingTransactions.Add(transaction);
+                    if (!BlockChain.Transactions.Contains(transaction))
+                        pendingTransactions.Add(transaction);
 
                     Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Pending trans: {pendingTransactions.Count}");
 
@@ -66,6 +68,9 @@ namespace PutCoin.Model
                 BlockChain = (BlockChain) blockChain.Clone();
                 pendingTransactions = pendingTransactions.Except(BlockChain.Transactions).ToList();
 
+                Program.Logger.Log(LogLevel.Info, $"USER {Id} -.-.-.-.-.-. BLOCKS {BlockChain.Blocks.Count}");
+                Program.Logger.Log(LogLevel.Info, $"USER {Id} -.-.-.-.-.-. Valid? {BlockChain.IsValid}");
+
                 if (BlockVerificationStatus == BlockVerificationStatusType.Found)
                 {
                     BlockVerificationStatus = BlockVerificationStatusType.NoVerification;
@@ -82,7 +87,9 @@ namespace PutCoin.Model
             Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} OnNewTransaction - Destinations: {String.Join(", ", transaction.Destinations.Select(x => x.ReceipentId))}");
             var resultKey = transaction.Id.ToString();
 
-            if (transaction.Destinations.Any(destination => destination.ReceipentId == Id) && !transactionValidationResultCount.ContainsKey(resultKey))
+            if (transaction.Destinations.Any(destination => destination.ReceipentId == Id) 
+                && !transactionValidationResultCount.ContainsKey(resultKey)
+                && transaction.Destinations.Select(x => x.ReceipentId).OrderBy(x => x).First() == Id)
             {
                 transactionValidationResultCount[resultKey] = 0;
                 Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} trying to create queue for transaction {transaction.Id}");
@@ -93,7 +100,7 @@ namespace PutCoin.Model
                 validationLine
                     .SubscribeOn(ThreadPoolScheduler.Instance)
                     .TakeWhile(_ => transactionValidationResultCount[resultKey] <= minimumAcceptance)
-                    .Take(Program.Users.Count)
+                    .Take(Program.Users.Count - 1)
                     .Subscribe(
                         validationResult =>
                         {
@@ -149,9 +156,15 @@ namespace PutCoin.Model
 
             var transactions = pendingTransactions.ToArray();
 
+            if (transactions.Any(x => BlockChain.Transactions.Contains(x)))
+                throw new Exception();
+
             Program.Logger.Log(LogLevel.Info, $"\t\tThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} started validating Block");
 
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
             BlockVerificationStatus = BlockVerificationStatusType.Searching;
+            
             while (BlockVerificationStatus == BlockVerificationStatusType.Searching)
             {
                 var potentialBlock = new Block
@@ -165,6 +178,15 @@ namespace PutCoin.Model
                 {
                     Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} finished validating Block");
                     BlockVerificationStatus = BlockVerificationStatusType.Found;
+
+                    stopWatch.Stop();
+                    TimeSpan ts = stopWatch.Elapsed;
+
+                    Program.Logger.Log(LogLevel.Info, $"=======================");
+                    Program.Logger.Log(LogLevel.Info, String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+                        ts.Hours, ts.Minutes, ts.Seconds,
+                        ts.Milliseconds / 10));
+
                     return potentialBlock;
                 }
             }
@@ -181,6 +203,8 @@ namespace PutCoin.Model
                 return;
             }
             BlockChain.Blocks.Add(newBlock);
+            pendingTransactions = pendingTransactions.Except(BlockChain.Transactions).ToList();
+
             Program.BlockChainPublishLine.OnNext(BlockChain);
         }
 
