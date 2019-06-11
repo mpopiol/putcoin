@@ -50,12 +50,24 @@ namespace PutCoin
                 Id = 5,
                 Signature = "5"
             };
+            var u6 = new User
+            {
+                Id = 6,
+                Signature = "6"
+            };
+            var u7 = new User
+            {
+                Id = 7,
+                Signature = "7"
+            };
 
             Users.Add(u1);
             Users.Add(u2);
             Users.Add(u3);
             Users.Add(u4);
             Users.Add(u5);
+            Users.Add(u6);
+            Users.Add(u7);
 
             var blockChain = new BlockChain();
             blockChain.Blocks.Add(new Block
@@ -92,6 +104,16 @@ namespace PutCoin
                             new TransactionDestination
                             {
                                 ReceipentId = u5.Id,
+                                Value = 50
+                            },
+                            new TransactionDestination
+                            {
+                                ReceipentId = u6.Id,
+                                Value = 50
+                            },
+                            new TransactionDestination
+                            {
+                                ReceipentId = u7.Id,
                                 Value = 50
                             }
                         }

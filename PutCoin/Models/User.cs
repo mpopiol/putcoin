@@ -13,7 +13,7 @@ namespace PutCoin.Model
 {
     public class User : ICloneable, IDisposable
     {
-        public static int CalculatingDifficulty = 5;
+        public static int CalculatingDifficulty = 4;
         private readonly IDisposable blockChainChangesSubscription;
         private readonly IDisposable transactionCheckSubscription;
         private readonly Dictionary<string, int> transactionValidationResultCount = new Dictionary<string, int>();
@@ -43,7 +43,7 @@ namespace PutCoin.Model
 
                     Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Pending trans: {pendingTransactions.Count}");
 
-                    if (BlockVerificationStatus == BlockVerificationStatusType.NoVerification && pendingTransactions.Count >= Program.Users.Count)
+                    if (BlockVerificationStatus == BlockVerificationStatusType.NoVerification && pendingTransactions.Any())
                     {
                         PublishNewBlock();
                     }
@@ -127,7 +127,7 @@ namespace PutCoin.Model
         private void CheckTransaction(Transaction transaction)
         {
             Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Checking transaction");
-            var isValid = transaction.IsValidForTransactionHistory(Transactions);
+            var isValid = transaction.IsValidForTransactionHistory(Transactions.ToArray());
 
             Program.TransactionValidationLine.TryGetValue(transaction.Id, out var publishingLine);
 
@@ -154,7 +154,7 @@ namespace PutCoin.Model
             var seed = new Random();
             var nonce = seed.Next();
 
-            var transactions = pendingTransactions.ToArray();
+            var transactions = pendingTransactions.Take(1).ToArray();
 
             if (transactions.Any(x => BlockChain.Transactions.Contains(x)))
                 throw new Exception();
