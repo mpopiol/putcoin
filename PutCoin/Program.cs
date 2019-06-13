@@ -11,7 +11,7 @@ namespace PutCoin
 {
     internal class Program
     {
-        internal static ConcurrentDictionary<int, User> Users = new ConcurrentDictionary<int, User>();
+        internal static ConcurrentBag<User> Users = new ConcurrentBag<User>();
         internal static Subject<BlockChain> BlockChainPublishLine = new Subject<BlockChain>();
         internal static Subject<Transaction> TransactionCheckLine = new Subject<Transaction>();
         internal static Subject<Transaction> VerifiedTransactionPublishLine = new Subject<Transaction>();
@@ -45,11 +45,29 @@ namespace PutCoin
                 Id = 4,
                 Signature = "4"
             };
+            var u5 = new User
+            {
+                Id = 5,
+                Signature = "5"
+            };
+            var u6 = new User
+            {
+                Id = 6,
+                Signature = "6"
+            };
+            var u7 = new User
+            {
+                Id = 7,
+                Signature = "7"
+            };
 
-            Users.TryAdd(u1.Id, u1);
-            Users.TryAdd(u2.Id, u2);
-            Users.TryAdd(u3.Id, u3);
-            Users.TryAdd(u4.Id, u4);
+            Users.Add(u1);
+            Users.Add(u2);
+            Users.Add(u3);
+            Users.Add(u4);
+            Users.Add(u5);
+            Users.Add(u6);
+            Users.Add(u7);
 
             var blockChain = new BlockChain();
             blockChain.Blocks.Add(new Block
@@ -82,6 +100,21 @@ namespace PutCoin
                             {
                                 ReceipentId = u4.Id,
                                 Value = 40
+                            },
+                            new TransactionDestination
+                            {
+                                ReceipentId = u5.Id,
+                                Value = 50
+                            },
+                            new TransactionDestination
+                            {
+                                ReceipentId = u6.Id,
+                                Value = 50
+                            },
+                            new TransactionDestination
+                            {
+                                ReceipentId = u7.Id,
+                                Value = 50
                             }
                         }
                     }
@@ -90,10 +123,10 @@ namespace PutCoin
 
             var threadPool = new List<Task>();
 
-            foreach (var userKV in Users)
+            foreach (var user in Users)
             {
-                userKV.Value.BlockChain = (BlockChain) blockChain.Clone();
-                var userThread = new UserThread(userKV.Value);
+                user.BlockChain = (BlockChain) blockChain.Clone();
+                var userThread = new UserThread(user);
 
                 threadPool.Add(Task.Run(() => userThread.Work()));
             }
@@ -102,10 +135,10 @@ namespace PutCoin
             {
                 if (Console.ReadKey().Key == ConsoleKey.L)
                 {
-                    FileLogger.ExportBlockChainsToFiles(Users.Select(x => new BlockChainUser
+                    FileLogger.ExportBlockChainsToFiles(Users.Select(user => new BlockChainUser
                         {
-                            BlockChain = x.Value.BlockChain,
-                            UserId = x.Value.Id
+                            BlockChain = user.BlockChain,
+                            UserId = user.Id
                         })
                     );
                 }

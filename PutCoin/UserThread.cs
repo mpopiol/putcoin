@@ -27,7 +27,7 @@ namespace PutCoin
                 {
                     //Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User: {_user.Signature}\tWaiting");
 
-                    await Task.Delay(random.Next(1000, 5000));
+                    await Task.Delay(random.Next(3000, 10000));
 
                     Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User: {_user.Signature}\tCreating transaction");
                     CreateTransaction();
@@ -41,7 +41,7 @@ namespace PutCoin
 
         private void CreateTransaction()
         {
-            var transaction = Transaction.GenerateRandomTransaction(_user);
+            var transaction = _user.GenerateRandomTransaction();
 
             if (transaction == null)
                 return;
