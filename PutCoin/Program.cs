@@ -15,6 +15,7 @@ namespace PutCoin
         internal static Subject<BlockChain> BlockChainPublishLine = new Subject<BlockChain>();
         internal static Subject<Transaction> TransactionCheckLine = new Subject<Transaction>();
         internal static Subject<Transaction> VerifiedTransactionPublishLine = new Subject<Transaction>();
+        internal static Subject<Guid> CheatersPublishLine = new Subject<Guid>();
 
         internal static ConcurrentDictionary<Guid, ReplaySubject<bool>> TransactionValidationLine =
             new ConcurrentDictionary<Guid, ReplaySubject<bool>>();
@@ -25,49 +26,29 @@ namespace PutCoin
         {
             Logger = LogManager.GetCurrentClassLogger();
 
-            var u1 = new User
+            Console.Write("Number of users: ");
+            var userCount = 0;
+            while (!int.TryParse(Console.ReadLine(), out userCount))
             {
-                Id = 1,
-                Signature = "1"
-            };
-            var u2 = new User
-            {
-                Id = 2,
-                Signature = "2"
-            };
-            var u3 = new User
-            {
-                Id = 3,
-                Signature = "3"
-            };
-            var u4 = new User
-            {
-                Id = 4,
-                Signature = "4"
-            };
-            var u5 = new User
-            {
-                Id = 5,
-                Signature = "5"
-            };
-            var u6 = new User
-            {
-                Id = 6,
-                Signature = "6"
-            };
-            var u7 = new User
-            {
-                Id = 7,
-                Signature = "7"
-            };
+                Console.Write("/nInsert a number: ");
+            }
 
-            Users.Add(u1);
-            Users.Add(u2);
-            Users.Add(u3);
-            Users.Add(u4);
-            Users.Add(u5);
-            Users.Add(u6);
-            Users.Add(u7);
+            Console.Write("Number of cheaters: ");
+            var cheatersCount = 0;
+            while (!int.TryParse(Console.ReadLine(), out cheatersCount))
+            {
+                Console.Write("/nInsert a number: ");
+            }
+
+            for (int userId = 1; userId <= userCount; userId++)
+            {
+                Users.Add(new User
+                {
+                    Id = userId,
+                    Signature = userId.ToString(),
+                    IsCheater = userId <= cheatersCount
+                });
+            }
 
             var blockChain = new BlockChain();
             blockChain.Blocks.Add(new Block
@@ -79,44 +60,10 @@ namespace PutCoin
                     new Transaction
                     {
                         IsGenesis = true,
-                        Destinations = new List<TransactionDestination>
-                        {
-                            new TransactionDestination
-                            {
-                                ReceipentId = u1.Id,
-                                Value = 10
-                            },
-                            new TransactionDestination
-                            {
-                                ReceipentId = u2.Id,
-                                Value = 20
-                            },
-                            new TransactionDestination
-                            {
-                                ReceipentId = u3.Id,
-                                Value = 30
-                            },
-                            new TransactionDestination
-                            {
-                                ReceipentId = u4.Id,
-                                Value = 40
-                            },
-                            new TransactionDestination
-                            {
-                                ReceipentId = u5.Id,
-                                Value = 50
-                            },
-                            new TransactionDestination
-                            {
-                                ReceipentId = u6.Id,
-                                Value = 50
-                            },
-                            new TransactionDestination
-                            {
-                                ReceipentId = u7.Id,
-                                Value = 50
-                            }
-                        }
+                        Destinations = Users.Select(user => new TransactionDestination {
+                            ReceipentId = user.Id,
+                            Value = user.Id * 10
+                        }).ToList()
                     }
                 }
             });
@@ -133,9 +80,15 @@ namespace PutCoin
 
             while (true)
             {
-                if (Console.ReadKey().Key == ConsoleKey.L)
+                switch (Console.ReadKey().Key)
                 {
-                    FileLogger.ExportBlockChainsToFiles(Users);
+                    case ConsoleKey.L:
+                        FileLogger.ExportBlockChainsToFiles(Users);
+                        break;
+                    case ConsoleKey.C:
+                        Console.WriteLine("\n\n--------------------------CHEATING IN PROGRESS----------------------------\n\n");
+                        CheatersPublishLine.OnNext(Guid.NewGuid());
+                        break;
                 }
             }
         }

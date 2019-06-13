@@ -37,19 +37,24 @@ namespace PutCoin.Model
             
             foreach (var transaction in transactions)
             foreach (var userId in transaction.Destinations.Select(x => x.ReceipentId))
-                if (transactions.Where(trans => trans.OriginTransactionIds != null).Count(x =>
-                        x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId) > 1)
-                    return true;
+                {
+                    var transactionWithTheSameOrigin = transactions.Where(trans => trans.OriginTransactionIds != null).Where(x =>
+                        x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId).ToArray();
+                    if (transactionWithTheSameOrigin.Length > 1)
+                        return true;
+                }
+                
 
             return false;
         }
 
         private bool IsThereAnyTransactionWithInvalidOrigin(Transaction additionalTransaction)
         {
-            var transactionsToProcess = Transactions.Concat(additionalTransaction).Where(x => !x.IsGenesis).ToArray();
+            var transactions = Transactions.Concat(additionalTransaction).ToArray();
+            var transactionsToProcess = transactions.Where(x => !x.IsGenesis).ToArray();
             foreach (var transaction in transactionsToProcess)
             {
-                var originTransaction = Transactions.Concat(additionalTransaction).Where(x => transaction.OriginTransactionIds.Contains(x.Id));
+                var originTransaction = transactions.Where(x => transaction.OriginTransactionIds.Contains(x.Id)).ToArray();
                 if (originTransaction.Count() != transaction.OriginTransactionIds.Count())
                     return true;
 

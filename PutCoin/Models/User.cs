@@ -15,6 +15,7 @@ namespace PutCoin.Model
     public class User : ICloneable, IDisposable
     {
         public static int CalculatingDifficulty = 4;
+        private readonly IDisposable cheaterSubscription;
         private readonly IDisposable blockChainChangesSubscription;
         private readonly IDisposable transactionCheckSubscription;
         private readonly Dictionary<string, int> transactionValidationResultCount = new Dictionary<string, int>();
@@ -26,8 +27,15 @@ namespace PutCoin.Model
         private List<Transaction> generatedTransactions = new List<Transaction>();
         public List<Transaction> rejectedTransactions = new List<Transaction>();
 
+        private List<Guid> autoAcceptedTransactionIds = new List<Guid>();
+
+        public bool IsCheater { get; set; }
+
         public User()
         {
+            cheaterSubscription = Program.CheatersPublishLine
+                .ObserveOn(NewThreadScheduler.Default)
+                .Subscribe(OnNewCheat);
             blockChainChangesSubscription = Program.BlockChainPublishLine
                 .ObserveOn(NewThreadScheduler.Default)
                 .Subscribe(OnUpdateBlockChain);
@@ -63,6 +71,74 @@ namespace PutCoin.Model
                 });
         }
 
+        private void OnNewCheat(Guid transactionId)
+        {
+            if (!IsCheater)
+            {
+                return;
+            }
+
+            autoAcceptedTransactionIds.Add(transactionId);
+
+            if (Id > 1)
+            {
+                return;
+            }
+
+            PublishFakeTransaction(transactionId);
+        }
+
+        private void PublishFakeTransaction(Guid transactionId)
+        {
+            var transaction = GenerateFakeTransaction(transactionId);
+
+            if (transaction == null)
+                return;
+
+            Program.TransactionValidationLine.GetOrAdd(transaction.Id, new ReplaySubject<bool>(Program.Users.Count));
+            Program.TransactionCheckLine.OnNext(transaction);
+        }
+
+        private Transaction GenerateFakeTransaction(Guid transactionId)
+        {
+            var cheaterIds = Program.Users.Where(user => user.IsCheater).Select(user => user.Id).ToArray();
+
+            var victimsValidTransactions = BlockChain.Transactions
+                .Where(x => x.Destinations.Select(y => y.ReceipentId).Any(recipientId => !cheaterIds.Contains(recipientId)))
+                .ToArray();
+
+            var allMadeTransactions = Transactions.Concat(pendingTransactions).ToArray();
+            var victimsNotUsedTransactions = victimsValidTransactions
+                .Where(x => !allMadeTransactions.Any(y =>
+                    y.OriginTransactionIds != null && y.OriginTransactionIds.Contains(x.Id) &&
+                    y.UserId == Id))
+                .ToArray();
+
+            var originTransaction = victimsNotUsedTransactions.Shuffle().FirstOrDefault();
+            if (originTransaction is default(Transaction))
+            {
+                Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User: {Id} tried to cheat, but victims have no money");
+                return null;
+            }
+
+            var originSource = originTransaction.Destinations.First(x => !cheaterIds.Contains(x.ReceipentId));
+
+            var valueToSpend = originSource.Value;
+            var destinations = GetDestinationsForNewTransaction(valueToSpend, cheaterIds);
+
+            var newTransaction = new Transaction
+            {
+                Destinations = destinations,
+                Id = transactionId,
+                OriginTransactionIds = new[] { originTransaction.Id },
+                Signature = "free_money",
+                UserId = originSource.ReceipentId
+            };
+            generatedTransactions.Add(newTransaction);
+
+            return newTransaction;
+        }
+
         public int Id { get; set; }
         public string Signature { get; set; }
         public BlockChain BlockChain { get; set; } = new BlockChain();
@@ -78,6 +154,7 @@ namespace PutCoin.Model
 
         private void OnUpdateBlockChain(BlockChain blockChain)
         {
+            var lastBlockTransactionSignatureIsHack = blockChain.Blocks.Last().Transactions.First().Signature == "free_money";
             if (blockChain.IsValid() && blockChain.Blocks.Count > BlockChain.Blocks.Count)
             {
                 BlockChain = (BlockChain) blockChain.Clone();
@@ -141,10 +218,19 @@ namespace PutCoin.Model
 
         private void CheckTransaction(Transaction transaction)
         {
-            Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Checking transaction");
-            var isValid = transaction.IsValidForTransactionHistory(Transactions.ToArray());
+            var isValid = true;
+
+            if (autoAcceptedTransactionIds.Contains(transaction.Id))
+            {
+                Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} cheating validation of transaction");
+            }
+            else
+            {
+                Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Checking transaction");
+                isValid = transaction.IsValidForTransactionHistory(Transactions.ToArray());
             
-            isValid &= BlockChain.IsValid(transaction);
+                isValid &= BlockChain.IsValid(transaction);
+            }
 
             Program.TransactionValidationLine.TryGetValue(transaction.Id, out var publishingLine);
 
@@ -326,6 +412,7 @@ namespace PutCoin.Model
                     blockChainChangesSubscription.Dispose();
                     transactionCheckSubscription.Dispose();
                     validatedTransactionSubscription.Dispose();
+                    cheaterSubscription.Dispose();
                 }
 
                 disposedValue = true;
