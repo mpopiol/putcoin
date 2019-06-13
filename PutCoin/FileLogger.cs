@@ -9,7 +9,7 @@ namespace PutCoin
 {
     public class FileLogger
     {
-        public static void ExportBlockChainsToFiles(IEnumerable<BlockChainUser> blockChains)
+        public static void ExportBlockChainsToFiles(IEnumerable<User> users)
         {
             Program.Logger.Log(LogLevel.Info, "Exporting blockchains to files");
             
@@ -19,14 +19,8 @@ namespace PutCoin
             var dateString = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}";
             using (var file = File.CreateText($"Logs/{dateString}.json"))
             {
-                file.Write(JsonConvert.SerializeObject(blockChains));
+                file.Write(JsonConvert.SerializeObject(users));
             }
         }
-    }
-
-    public class BlockChainUser
-    {
-        public BlockChain BlockChain { get; set; }
-        public int UserId { get; set; }
     }
 }

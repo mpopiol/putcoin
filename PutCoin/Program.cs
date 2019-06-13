@@ -135,12 +135,7 @@ namespace PutCoin
             {
                 if (Console.ReadKey().Key == ConsoleKey.L)
                 {
-                    FileLogger.ExportBlockChainsToFiles(Users.Select(user => new BlockChainUser
-                        {
-                            BlockChain = user.BlockChain,
-                            UserId = user.Id
-                        })
-                    );
+                    FileLogger.ExportBlockChainsToFiles(Users);
                 }
             }
         }

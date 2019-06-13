@@ -7,6 +7,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 using NLog;
 
 namespace PutCoin.Model
@@ -23,6 +24,7 @@ namespace PutCoin.Model
 
         private List<Transaction> pendingTransactions = new List<Transaction>();
         private List<Transaction> generatedTransactions = new List<Transaction>();
+        public List<Transaction> rejectedTransactions = new List<Transaction>();
 
         public User()
         {
@@ -53,6 +55,8 @@ namespace PutCoin.Model
         public int Id { get; set; }
         public string Signature { get; set; }
         public BlockChain BlockChain { get; set; } = new BlockChain();
+        
+        [JsonIgnore]
         public IEnumerable<Transaction> Transactions => BlockChain.Transactions.Concat(pendingTransactions);
 
         public object Clone()
@@ -135,6 +139,9 @@ namespace PutCoin.Model
             {
                 return;
             }
+            
+            if (!isValid)
+                rejectedTransactions.Add(transaction);
 
             publishingLine.OnNext(isValid);
         }
