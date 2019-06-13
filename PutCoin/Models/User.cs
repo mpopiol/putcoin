@@ -40,6 +40,13 @@ namespace PutCoin.Model
                 .Subscribe(transaction =>
                 {
                     generatedTransactions.Remove(transaction);
+
+                    if (!BlockChain.IsValid(transaction))
+                    {
+                        Program.Logger.Log(LogLevel.Info, $"User {Id} Skipping INVALID transaction which came from VALIDATED transactions queue!");
+                        return;
+                    }
+                        
                     if (!BlockChain.Transactions.Contains(transaction))
                         pendingTransactions.Add(transaction);
 
@@ -67,13 +74,13 @@ namespace PutCoin.Model
 
         private void OnUpdateBlockChain(BlockChain blockChain)
         {
-            if (blockChain.IsValid && blockChain.Blocks.Count > BlockChain.Blocks.Count)
+            if (blockChain.IsValid() && blockChain.Blocks.Count > BlockChain.Blocks.Count)
             {
                 BlockChain = (BlockChain) blockChain.Clone();
                 pendingTransactions = pendingTransactions.Except(BlockChain.Transactions).ToList();
 
                 Program.Logger.Log(LogLevel.Info, $"USER {Id} -.-.-.-.-.-. BLOCKS {BlockChain.Blocks.Count}");
-                Program.Logger.Log(LogLevel.Info, $"USER {Id} -.-.-.-.-.-. Valid? {BlockChain.IsValid}");
+                Program.Logger.Log(LogLevel.Info, $"USER {Id} -.-.-.-.-.-. Valid? {BlockChain.IsValid()}");
 
                 if (BlockVerificationStatus == BlockVerificationStatusType.Found)
                 {
@@ -132,6 +139,8 @@ namespace PutCoin.Model
         {
             Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Checking transaction");
             var isValid = transaction.IsValidForTransactionHistory(Transactions.ToArray());
+            
+            isValid &= BlockChain.IsValid(transaction);
 
             Program.TransactionValidationLine.TryGetValue(transaction.Id, out var publishingLine);
 

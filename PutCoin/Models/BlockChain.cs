@@ -19,10 +19,10 @@ namespace PutCoin.Model
             return cloned;
         }
 
-        public bool IsValid =>
-            !AreThereMoreThanOneTransactionsWithTheSameOrigin() &&
-            !IsThereAnyTransactionWithInvalidOrigin() &&
-            !IsThereTransactionWithDifferentValueSpentThanAvailable() &&
+        public bool IsValid(Transaction additionalTransaction = null) =>
+            !AreThereMoreThanOneTransactionsWithTheSameOrigin(additionalTransaction) &&
+            !IsThereAnyTransactionWithInvalidOrigin(additionalTransaction) &&
+            !IsThereTransactionWithDifferentValueSpentThanAvailable(additionalTransaction) &&
             !IsThereBlockWithInvalidHash();
 
         private bool IsThereBlockWithInvalidHash()
@@ -31,23 +31,25 @@ namespace PutCoin.Model
                 x.Hash.Take(User.CalculatingDifficulty).Any(character => character != '0'));
         }
 
-        private bool AreThereMoreThanOneTransactionsWithTheSameOrigin()
+        private bool AreThereMoreThanOneTransactionsWithTheSameOrigin(Transaction additionalTransaction)
         {
-            foreach (var transaction in Transactions)
+            var transactions = Transactions.Concat(additionalTransaction).ToArray();
+            
+            foreach (var transaction in transactions)
             foreach (var userId in transaction.Destinations.Select(x => x.ReceipentId))
-                if (Transactions.Where(trans => trans.OriginTransactionIds != null).Count(x =>
+                if (transactions.Where(trans => trans.OriginTransactionIds != null).Count(x =>
                         x.OriginTransactionIds.Contains(transaction.Id) && x.UserId == userId) > 1)
                     return true;
 
             return false;
         }
 
-        private bool IsThereAnyTransactionWithInvalidOrigin()
+        private bool IsThereAnyTransactionWithInvalidOrigin(Transaction additionalTransaction)
         {
-            var transactionsToProcess = Transactions.Where(x => !x.IsGenesis);
+            var transactionsToProcess = Transactions.Concat(additionalTransaction).Where(x => !x.IsGenesis).ToArray();
             foreach (var transaction in transactionsToProcess)
             {
-                var originTransaction = Transactions.Where(x => transaction.OriginTransactionIds.Contains(x.Id));
+                var originTransaction = Transactions.Concat(additionalTransaction).Where(x => transaction.OriginTransactionIds.Contains(x.Id));
                 if (originTransaction.Count() != transaction.OriginTransactionIds.Count())
                     return true;
 
@@ -58,11 +60,13 @@ namespace PutCoin.Model
             return false;
         }
 
-        private bool IsThereTransactionWithDifferentValueSpentThanAvailable()
+        private bool IsThereTransactionWithDifferentValueSpentThanAvailable(Transaction additionalTransaction)
         {
-            var transactionsToProcess = Transactions.Where(x => !x.IsGenesis);
+            var transactions = Transactions.Concat(additionalTransaction).ToArray();
+            
+            var transactionsToProcess = transactions.Where(x => !x.IsGenesis);
             foreach (var transaction in transactionsToProcess)
-                if (!transaction.IsValidForTransactionHistory(Transactions))
+                if (!transaction.IsValidForTransactionHistory(transactions))
                     return true;
 
             return false;
