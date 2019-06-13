@@ -44,6 +44,10 @@ namespace PutCoin.Model
                     if (!BlockChain.IsValid(transaction))
                     {
                         Program.Logger.Log(LogLevel.Info, $"User {Id} Skipping INVALID transaction which came from VALIDATED transactions queue!");
+                        
+                        if (!rejectedTransactions.Contains(transaction))
+                            rejectedTransactions.Add(transaction);
+                        
                         return;
                     }
                         
@@ -148,9 +152,11 @@ namespace PutCoin.Model
             {
                 return;
             }
-            
-            if (!isValid)
+
+            if (!isValid && !rejectedTransactions.Contains(transaction))
+            {
                 rejectedTransactions.Add(transaction);
+            }
 
             publishingLine.OnNext(isValid);
         }
