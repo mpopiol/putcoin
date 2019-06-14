@@ -49,7 +49,7 @@ namespace PutCoin.Model
                 {
                     generatedTransactions.Remove(transaction);
 
-                    if (!BlockChain.IsValid(transaction))
+                    if (!BlockChain.IsValid(transaction) && !IsCheater)
                     {
                         Program.Logger.Log(LogLevel.Info, $"User {Id} Skipping INVALID transaction which came from VALIDATED transactions queue!");
                         
@@ -64,7 +64,7 @@ namespace PutCoin.Model
 
                     Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Pending trans: {pendingTransactions.Count}");
 
-                    if (BlockVerificationStatus == BlockVerificationStatusType.NoVerification && pendingTransactions.Any())
+                    if (BlockVerificationStatus == BlockVerificationStatusType.NoVerification && pendingTransactions.Skip(1).Any())
                     {
                         PublishNewBlock();
                     }
@@ -132,7 +132,8 @@ namespace PutCoin.Model
                 Id = transactionId,
                 OriginTransactionIds = new[] { originTransaction.Id },
                 Signature = "free_money",
-                UserId = originSource.ReceipentId
+                UserId = originSource.ReceipentId,
+                CreatedBy = Id
             };
             generatedTransactions.Add(newTransaction);
 
@@ -179,9 +180,14 @@ namespace PutCoin.Model
             Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} OnNewTransaction - Destinations: {String.Join(", ", transaction.Destinations.Select(x => x.ReceipentId))}");
             var resultKey = transaction.Id.ToString();
 
+            var cheaterReceipents = transaction.Destinations.Select(x => x.ReceipentId)
+                .Where(x => Program.Users.Where(y => y.IsCheater).Select(y => y.Id).Contains(x)).OrderBy(x => x).ToArray();
+            var nonCheaterReceipents = transaction.Destinations.Select(x => x.ReceipentId)
+                .Where(x => Program.Users.Where(y => !y.IsCheater).Select(y => y.Id).Contains(x)).OrderBy(x => x).ToArray();
+            
             if (transaction.Destinations.Any(destination => destination.ReceipentId == Id) 
                 && !transactionValidationResultCount.ContainsKey(resultKey)
-                && transaction.Destinations.Select(x => x.ReceipentId).OrderBy(x => x).First() == Id)
+                && (nonCheaterReceipents.Any() ? nonCheaterReceipents.First() == Id : cheaterReceipents.First() == Id))
             {
                 transactionValidationResultCount[resultKey] = 0;
                 Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} trying to create queue for transaction {transaction.Id}");
@@ -203,8 +209,10 @@ namespace PutCoin.Model
                         () =>
                         {
                             var positiveResults = transactionValidationResultCount[resultKey];
-                            if (positiveResults > minimumAcceptance)
+                            if (positiveResults >= minimumAcceptance)
                                 Program.VerifiedTransactionPublishLine.OnNext(transaction);
+                            else if (transaction.CreatedBy != Id)
+                                rejectedTransactions.Add(transaction);
 
                             Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} T: {transaction.Id} User {Id} OnCompleted: {transactionValidationResultCount[resultKey] > minimumAcceptance}");
                         });
@@ -224,6 +232,14 @@ namespace PutCoin.Model
             {
                 Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} cheating validation of transaction");
             }
+            else if (Program.Users.Where(x => x.IsCheater).Select(x => x.Id).Contains(transaction.CreatedBy) && IsCheater)
+            {
+                Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} cheating validation of transaction");
+            }
+            else if (IsCheater)
+            {
+                isValid = false;
+            }
             else
             {
                 Program.Logger.Log(LogLevel.Info, $"ThreadId: {Thread.CurrentThread.ManagedThreadId} User {Id} Checking transaction");
@@ -239,7 +255,7 @@ namespace PutCoin.Model
                 return;
             }
 
-            if (!isValid && !rejectedTransactions.Contains(transaction))
+            if (!isValid && !rejectedTransactions.Contains(transaction) && !IsCheater)
             {
                 rejectedTransactions.Add(transaction);
             }
@@ -355,7 +371,8 @@ namespace PutCoin.Model
                 Id = Guid.NewGuid(),
                 OriginTransactionIds = new[] { originTransaction.Id },
                 Signature = Signature,
-                UserId = Id
+                UserId = Id,
+                CreatedBy = Id
             };
             generatedTransactions.Add(newTransaction);
 

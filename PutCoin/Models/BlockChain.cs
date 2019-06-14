@@ -19,11 +19,12 @@ namespace PutCoin.Model
             return cloned;
         }
 
-        public bool IsValid(Transaction additionalTransaction = null) =>
-            !AreThereMoreThanOneTransactionsWithTheSameOrigin(additionalTransaction) &&
-            !IsThereAnyTransactionWithInvalidOrigin(additionalTransaction) &&
-            !IsThereTransactionWithDifferentValueSpentThanAvailable(additionalTransaction) &&
-            !IsThereBlockWithInvalidHash();
+        public bool IsValid(Transaction additionalTransaction = null) => 
+                !AreThereMoreThanOneTransactionsWithTheSameOrigin(additionalTransaction) &&
+                !IsThereAnyTransactionWithInvalidOrigin(additionalTransaction) &&
+                !IsThereTransactionWithDifferentValueSpentThanAvailable(additionalTransaction) &&
+                !IsThereBlockWithInvalidHash() &&
+                Transactions.Concat(additionalTransaction).All(x => x.Signature?.Equals(x.UserId.ToString()) ?? true);
 
         private bool IsThereBlockWithInvalidHash()
         {

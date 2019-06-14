@@ -13,6 +13,8 @@ namespace PutCoin.Model
         public IEnumerable<TransactionDestination> Destinations { get; set; }
         public string Signature { get; set; }
         public int UserId { get; set; }
+        public int CreatedBy { get; set; }
+
         public bool IsGenesis { get; set; }
 
         public object Clone()
